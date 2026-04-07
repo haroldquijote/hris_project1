@@ -6,7 +6,7 @@
 
 ```bash
 
-git clone https://github.com/haroldquijote/hris\_project1.git
+git clone https://github.com/haroldquijote/hris_project1.git
 
 cd hris_project1
 
