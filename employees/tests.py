@@ -1,0 +1,119 @@
+from django.test import TestCase
+from django.urls import reverse
+
+from .models import Department, Employee, JobTitle
+
+
+class EmployeeCRUDTests(TestCase):
+    def setUp(self):
+        self.department = Department.objects.create(name="Engineering")
+        self.job_title = JobTitle.objects.create(title="Software Engineer", department=self.department)
+
+    def employee_payload(self, **overrides):
+        data = {
+            "company_id": "EMP-001",
+            "department": self.department.pk,
+            "job_title": self.job_title.pk,
+            "employment_status": "REGULAR",
+            "date_hired": "2025-01-01",
+            "date_of_resignation": "",
+            "last_name": "Doe",
+            "first_name": "Jane",
+            "middle_name": "A",
+            "mothers_maiden_name": "Smith",
+            "birth_date": "2000-01-01",
+            "birth_place": "City",
+            "nationality": "Filipino",
+            "gender": "F",
+            "marital_status": "S",
+            "permanent_address": "123 Street",
+            "city": "Manila",
+            "zip_code": "1000",
+            "mobile_no": "09123456789",
+            "email": "jane@example.com",
+            "tin": "",
+            "sss_gsis_no": "",
+            "hdmf": "",
+            "philhealth": "",
+            "drivers_license": "",
+            "passport": "",
+        }
+        data.update(overrides)
+        return data
+
+    def create_employee(self, **overrides):
+        payload = self.employee_payload(**overrides)
+        return Employee.objects.create(
+            company_id=payload["company_id"],
+            department=self.department,
+            job_title=self.job_title,
+            employment_status=payload["employment_status"],
+            date_hired=payload["date_hired"],
+            date_of_resignation=payload["date_of_resignation"] or None,
+            last_name=payload["last_name"],
+            first_name=payload["first_name"],
+            middle_name=payload["middle_name"],
+            mothers_maiden_name=payload["mothers_maiden_name"],
+            birth_date=payload["birth_date"],
+            birth_place=payload["birth_place"],
+            nationality=payload["nationality"],
+            gender=payload["gender"],
+            marital_status=payload["marital_status"],
+            permanent_address=payload["permanent_address"],
+            city=payload["city"],
+            zip_code=payload["zip_code"],
+            mobile_no=payload["mobile_no"],
+            email=payload["email"],
+            tin=payload["tin"],
+            sss_gsis_no=payload["sss_gsis_no"],
+            hdmf=payload["hdmf"],
+            philhealth=payload["philhealth"],
+            drivers_license=payload["drivers_license"],
+            passport=payload["passport"],
+        )
+
+    def test_employee_list_page_loads(self):
+        self.create_employee()
+        response = self.client.get(reverse("employee_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Doe, Jane")
+
+    def test_create_employee(self):
+        response = self.client.post(reverse("employee_create"), data=self.employee_payload())
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Employee.objects.filter(company_id="EMP-001").exists())
+
+    def test_create_employee_invalid_form(self):
+        invalid = self.employee_payload(email="")
+        response = self.client.post(reverse("employee_create"), data=invalid)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "This field is required")
+
+    def test_update_employee(self):
+        employee = self.create_employee()
+        updated = self.employee_payload(last_name="Smith", company_id="EMP-002", email="smith@example.com")
+
+        response = self.client.post(reverse("employee_update", args=[employee.pk]), data=updated)
+        employee.refresh_from_db()
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(employee.last_name, "Smith")
+        self.assertEqual(employee.company_id, "EMP-002")
+
+    def test_delete_employee(self):
+        employee = self.create_employee()
+
+        response = self.client.post(reverse("employee_delete", args=[employee.pk]))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Employee.objects.filter(pk=employee.pk).exists())
+
+    def test_employee_detail_page_loads(self):
+        employee = self.create_employee()
+        response = self.client.get(reverse("employee_detail", args=[employee.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Doe, Jane")

@@ -1,0 +1,13 @@
+<h1>Employee List</h1>
+
+<p><a href="{% url 'employee_create' %}">Add Employee</a></p>
+
+{% for emp in employees %}
+    <p>
+        <a href="{% url 'employee_detail' emp.pk %}">{{ emp.last_name }}, {{ emp.first_name }}</a>
+        | <a href="{% url 'employee_update' emp.pk %}">Edit</a>
+        | <a href="{% url 'employee_delete' emp.pk %}">Delete</a>
+    </p>
+{% empty %}
+    <p>No employees found.</p>
+{% endfor %}

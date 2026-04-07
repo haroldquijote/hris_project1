@@ -1,0 +1,9 @@
+<h1>{% if is_edit %}Edit Employee{% else %}Add Employee{% endif %}</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save</button>
+</form>
+
+<p><a href="{% url 'employee_list' %}">Back to list</a></p>

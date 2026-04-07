@@ -1,0 +1,15 @@
+<h1>Employee Details</h1>
+
+<p><strong>Name:</strong> {{ employee.last_name }}, {{ employee.first_name }} {{ employee.middle_name }}</p>
+<p><strong>Company ID:</strong> {{ employee.company_id }}</p>
+<p><strong>Department:</strong> {{ employee.department }}</p>
+<p><strong>Job Title:</strong> {{ employee.job_title }}</p>
+<p><strong>Email:</strong> {{ employee.email }}</p>
+<p><strong>Mobile:</strong> {{ employee.mobile_no }}</p>
+<p><strong>Status:</strong> {{ employee.get_employment_status_display }}</p>
+
+<p>
+    <a href="{% url 'employee_update' employee.pk %}">Edit</a> |
+    <a href="{% url 'employee_delete' employee.pk %}">Delete</a> |
+    <a href="{% url 'employee_list' %}">Back to list</a>
+</p>

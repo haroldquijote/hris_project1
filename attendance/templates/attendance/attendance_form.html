@@ -1,0 +1,9 @@
+<h1>{% if is_edit %}Edit Attendance{% else %}Add Attendance{% endif %}</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save</button>
+</form>
+
+<p><a href="{% url 'attendance_list' %}">Back to list</a></p>
