@@ -8,21 +8,20 @@
 
 git clone https://github.com/haroldquijote/hris\_project1.git
 
-cd hris\_project1
+cd hris_project1
 
 
 
-\#############
+#############
 
-\#step2
+#step2
 python -m venv venv
 
 #step3
 venv\\Scripts\\activate
 
 
-\#step4
-
+#step4
 pip install -r requirements.txt
 
 #step5
