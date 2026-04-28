@@ -18,7 +18,7 @@ SECRET_KEY = 'django-insecure-yc_fr&a8sbyl!n_q1y#%q%ab_a#6y38adljegzq@&b9@glwlau
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -28,9 +28,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'employees',
-    'attendance',
+    # 'attendance',
     'users',
-    'config',
+    # 'config',
     'simple_history',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -109,6 +109,12 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+     'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '20/min',   # adjust to your comfort level
+    },
 }
 
 from datetime import timedelta
