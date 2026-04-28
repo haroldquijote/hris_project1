@@ -2,10 +2,12 @@ from rest_framework import serializers
 from .models import Employee, Department, JobTitle, WorkSchedule, EmployeeSalary
 
 
-# ---------- Nested Serializers (for read-only details) ----------
+# ================================================================
+# Nested / Supporting Serializers
+# ================================================================
 
 class DepartmentSerializer(serializers.ModelSerializer):
-    """Used to show department details inside Employee response"""
+    """Used to read / write department data. Also nested inside Employee response."""
     class Meta:
         model = Department
         fields = ['id', 'name', 'description', 'created_at', 'updated_at']
@@ -13,47 +15,89 @@ class DepartmentSerializer(serializers.ModelSerializer):
 
 
 class JobTitleSerializer(serializers.ModelSerializer):
-    """Used to show job title details inside Employee response"""
-    department_name = serializers.CharField(source='department.name', read_only=True)
+    """
+    Used for JobTitle CRUD.
+    The `department_name` field shows the department's name without needing
+    an extra query (dot‑notation is safe here because Department is always required).
+    """
+    department_name = serializers.CharField(
+        source='department.name',
+        read_only=True
+    )
+
     class Meta:
         model = JobTitle
-        fields = ['id', 'title', 'department', 'department_name', 'description', 'created_at', 'updated_at']
+        fields = ['id', 'title', 'department', 'department_name',
+                  'description', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
+# ---------------------------------------------------------------
+# IMPROVEMENT ① : WorkScheduleSerializer now exposes ALL model fields.
+# Previously it only had 'id', 'name', 'shift_start', 'shift_end'.
+# The missing fields meant you couldn't set working days or the grace period.
+# ---------------------------------------------------------------
 class WorkScheduleSerializer(serializers.ModelSerializer):
-    """Used to show work schedule inside Employee response"""
+    """Used to read / write work schedules. Now includes all schedule configuration."""
     class Meta:
         model = WorkSchedule
-        fields = ['id', 'name', 'shift_start', 'shift_end']
+        fields = [
+            'id',
+            'name',
+            # Working days – each is a simple BooleanField
+            'is_monday', 'is_tuesday', 'is_wednesday',
+            'is_thursday', 'is_friday', 'is_saturday', 'is_sunday',
+            # Shift timing
+            'shift_start',
+            'shift_end',
+            'grace_period_minutes',
+            # Metadata (read‑only)
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
-# ---------- Main Employee Serializer (Create/Update/List) ----------
+# ================================================================
+# Employee Serializers
+# ================================================================
 
 class EmployeeSerializer(serializers.ModelSerializer):
-    """Main serializer for Employee CRUD operations"""
-    
-    # Read-only nested fields (show related object details)
+    """Main serializer for Employee CRUD operations."""
+
+    # Read‑only nested representations – they show the full related object data.
     department_detail = DepartmentSerializer(source='department', read_only=True)
     job_title_detail = JobTitleSerializer(source='job_title', read_only=True)
     work_schedule_detail = WorkScheduleSerializer(source='work_schedule', read_only=True)
-    
-    # Human-readable display fields
+
+    # Full name is computed, never stored.
     full_name = serializers.SerializerMethodField()
-    employment_status_display = serializers.SerializerMethodField()
-    gender_display = serializers.SerializerMethodField()
-    marital_status_display = serializers.SerializerMethodField()
-    
+
+    # ---------------------------------------------------------------
+    # IMPROVEMENT ② : Use Django’s built-in `get_FOO_display()` for choice fields.
+    # Before: manual dict lookup like `dict(Employee.EMPLOYMENT_STATUS).get(...)`.
+    # Now: cleaner, always matches model choices, one line.
+    # ---------------------------------------------------------------
+    employment_status_display = serializers.CharField(
+        source='get_employment_status_display', read_only=True
+    )
+    gender_display = serializers.CharField(
+        source='get_gender_display', read_only=True
+    )
+    marital_status_display = serializers.CharField(
+        source='get_marital_status_display', read_only=True
+    )
+
     class Meta:
         model = Employee
         fields = [
             'id',
             'company_id',
-            # Related objects (IDs for writing)
+            # FK IDs (for writing)
             'department',
             'job_title',
             'work_schedule',
-            # Related objects (details for reading)
+            # FK detailed representations (read‑only)
             'department_detail',
             'job_title_detail',
             'work_schedule_detail',
@@ -93,33 +137,25 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
-    
+
     def get_full_name(self, obj):
-        """Return full name: First Last"""
         return f"{obj.first_name} {obj.last_name}"
-    
-    def get_employment_status_display(self, obj):
-        """Return human-readable employment status"""
-        return dict(Employee.EMPLOYMENT_STATUS).get(obj.employment_status, obj.employment_status)
-    
-    def get_gender_display(self, obj):
-        """Return human-readable gender"""
-        return dict(Employee.GENDER_CHOICES).get(obj.gender, obj.gender)
-    
-    def get_marital_status_display(self, obj):
-        """Return human-readable marital status"""
-        return dict(Employee.MARITAL_CHOICES).get(obj.marital_status, obj.marital_status)
 
-
-# ---------- List Serializer (Lighter version for listing many employees) ----------
 
 class EmployeeListSerializer(serializers.ModelSerializer):
-    """Lightweight serializer for listing employees (excludes sensitive/verbose fields)"""
+    """
+    Lightweight serializer for listing employees.
+    Uses only essential fields to keep response fast.
+    """
     full_name = serializers.SerializerMethodField()
     department_name = serializers.CharField(source='department.name', read_only=True)
     job_title_name = serializers.CharField(source='job_title.title', read_only=True)
-    employment_status_display = serializers.SerializerMethodField()
-    
+
+    # Also use the built‑in display method
+    employment_status_display = serializers.CharField(
+        source='get_employment_status_display', read_only=True
+    )
+
     class Meta:
         model = Employee
         fields = [
@@ -133,27 +169,25 @@ class EmployeeListSerializer(serializers.ModelSerializer):
             'employment_status_display',
             'date_hired',
         ]
-    
+
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}"
-    
-    def get_employment_status_display(self, obj):
-        return dict(Employee.EMPLOYMENT_STATUS).get(obj.employment_status, obj.employment_status)
 
 
-# ---------- Employee Salary Serializer ----------
+# ================================================================
+# Employee Salary Serializers
+# ================================================================
 
 class EmployeeSalarySerializer(serializers.ModelSerializer):
-    """Serializer for Employee Salary (production-ready)"""
-    
-    # Read-only fields for display
+    """Read‑only serializer for salary records with extra display fields."""
+
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
     created_by_name = serializers.CharField(source='created_by.username', read_only=True)
     approved_by_name = serializers.CharField(source='approved_by.username', read_only=True)
-    
-    # Human-readable display
-    is_current = serializers.SerializerMethodField()
-    
+
+    # Check if this salary is the current one (no end_date)
+    is_current = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = EmployeeSalary
         fields = [
@@ -173,18 +207,21 @@ class EmployeeSalarySerializer(serializers.ModelSerializer):
             'approved_by_name',
             'approved_at',
         ]
-        read_only_fields = ['id', 'created_by', 'created_at', 'approved_by', 'approved_at']
-    
+        read_only_fields = [
+            'id', 'created_by', 'created_at', 'approved_by', 'approved_at', 'is_current'
+        ]
+
     def get_is_current(self, obj):
-        """Return True if this is the current active salary"""
+        # Override the BooleanField source – we keep a method for clarity
         return obj.end_date is None
 
 
-# ---------- Create/Update Salary Serializer (Separate for write operations) ----------
-
 class EmployeeSalaryCreateSerializer(serializers.ModelSerializer):
-    """Serializer specifically for creating/updating salary records"""
-    
+    """
+    Serializer used purely for creating / updating salary records.
+    Excludes audit fields (created_by, approved_by) – those are handled by the view.
+    """
+
     class Meta:
         model = EmployeeSalary
         fields = [
@@ -195,18 +232,12 @@ class EmployeeSalaryCreateSerializer(serializers.ModelSerializer):
             'end_date',
             'reason',
         ]
-    
+
     def validate(self, data):
-        """Custom validation for salary records"""
-        # Ensure effective_date is not in the past? (Optional)
-        # from datetime import date
-        # if data['effective_date'] < date.today():
-        #     raise serializers.ValidationError("Effective date cannot be in the past")
-        
-        # Ensure end_date is after effective_date if provided
-        if data.get('end_date') and data['end_date'] <= data['effective_date']:
-            raise serializers.ValidationError({
-                'end_date': 'End date must be after effective date'
-            })
-        
+        """Ensure end_date is after effective_date if provided."""
+        if data.get('end_date') and data.get('effective_date'):
+            if data['end_date'] <= data['effective_date']:
+                raise serializers.ValidationError({
+                    'end_date': 'End date must be after effective date'
+                })
         return data
