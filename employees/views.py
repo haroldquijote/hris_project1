@@ -315,7 +315,7 @@ class EmployeeSalaryListView(APIView):
 
         serializer = EmployeeSalaryCreateSerializer(data=data)
         if serializer.is_valid():
-            salary = serializer.save(created_by=request.user)
+            salary = serializer.save(employee=employee, created_by=request.user)
             return Response(EmployeeSalarySerializer(salary).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
