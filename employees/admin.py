@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Department, JobTitle, WorkSchedule, Employee, EmployeeSalary
+from .models import Department, JobTitle, Employee, EmployeeSalary, AllowanceType, EmployeeAllowance
 
 
 @admin.register(Department)
@@ -17,22 +17,7 @@ class JobTitleAdmin(admin.ModelAdmin):
     list_display_links = ['title']
 
 
-@admin.register(WorkSchedule)
-class WorkScheduleAdmin(admin.ModelAdmin):
-    list_display = ['id', 'name', 'shift_start', 'shift_end', 'get_working_days']
-    list_display_links = ['name']
-    
-    def get_working_days(self, obj):
-        days = []
-        if obj.is_monday: days.append('Mon')
-        if obj.is_tuesday: days.append('Tue')
-        if obj.is_wednesday: days.append('Wed')
-        if obj.is_thursday: days.append('Thu')
-        if obj.is_friday: days.append('Fri')
-        if obj.is_saturday: days.append('Sat')
-        if obj.is_sunday: days.append('Sun')
-        return ', '.join(days)
-    get_working_days.short_description = 'Working Days'
+
 
 
 @admin.register(Employee)
@@ -68,7 +53,7 @@ class EmployeeAdmin(admin.ModelAdmin):
 
 @admin.register(EmployeeSalary)
 class EmployeeSalaryAdmin(admin.ModelAdmin):
-    list_display = ['id', 'employee', 'base_salary', 'monthly_allowance', 'effective_date', 'is_current', 'reason']
+    list_display = ['id', 'employee', 'base_salary', 'effective_date', 'is_current', 'reason']
     list_filter = ['effective_date', 'created_at']
     search_fields = ['employee__first_name', 'employee__last_name', 'employee__company_id']
     readonly_fields = ['created_by', 'created_at', 'approved_by', 'approved_at']
@@ -83,3 +68,17 @@ class EmployeeSalaryAdmin(admin.ModelAdmin):
         if not obj.pk:  # If new object
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+@admin.register(AllowanceType)
+class AllowanceTypeAdmin(admin.ModelAdmin):
+    list_display = ['name', 'description', 'created_at', 'updated_at']
+    search_fields = ['name']
+    ordering = ['name']
+
+
+@admin.register(EmployeeAllowance)
+class EmployeeAllowanceAdmin(admin.ModelAdmin):
+    list_display = ['employee', 'allowance_type', 'amount', 'effective_date', 'end_date', 'created_at']
+    list_filter = ['allowance_type', 'effective_date']
+    search_fields = ['employee__first_name', 'employee__last_name', 'allowance_type__name']
+    ordering = ['-effective_date']

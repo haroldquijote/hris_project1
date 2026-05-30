@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Employee, Department, JobTitle, WorkSchedule, EmployeeSalary
+from .models import Employee, Department, JobTitle, EmployeeSalary, AllowanceType, EmployeeAllowance
+from attendance.serializers import WorkScheduleSerializer
 
 
 # ================================================================
@@ -32,30 +33,7 @@ class JobTitleSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
-# ---------------------------------------------------------------
-# IMPROVEMENT ① : WorkScheduleSerializer now exposes ALL model fields.
-# Previously it only had 'id', 'name', 'shift_start', 'shift_end'.
-# The missing fields meant you couldn't set working days or the grace period.
-# ---------------------------------------------------------------
-class WorkScheduleSerializer(serializers.ModelSerializer):
-    """Used to read / write work schedules. Now includes all schedule configuration."""
-    class Meta:
-        model = WorkSchedule
-        fields = [
-            'id',
-            'name',
-            # Working days – each is a simple BooleanField
-            'is_monday', 'is_tuesday', 'is_wednesday',
-            'is_thursday', 'is_friday', 'is_saturday', 'is_sunday',
-            # Shift timing
-            'shift_start',
-            'shift_end',
-            'grace_period_minutes',
-            # Metadata (read‑only)
-            'created_at',
-            'updated_at',
-        ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+
 
 
 # ================================================================
@@ -195,7 +173,6 @@ class EmployeeSalarySerializer(serializers.ModelSerializer):
             'employee',
             'employee_name',
             'base_salary',
-            'monthly_allowance',
             'effective_date',
             'end_date',
             'is_current',
@@ -241,3 +218,21 @@ class EmployeeSalaryCreateSerializer(serializers.ModelSerializer):
                     'end_date': 'End date must be after effective date'
                 })
         return data
+    
+class AllowanceTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AllowanceType
+        fields = ['id', 'name', 'description', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class EmployeeAllowanceSerializer(serializers.ModelSerializer):
+    allowance_type_name = serializers.CharField(source='allowance_type.name', read_only=True)
+
+    class Meta:
+        model = EmployeeAllowance
+        fields = [
+            'id', 'employee', 'allowance_type', 'allowance_type_name',
+            'amount', 'effective_date', 'end_date', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']

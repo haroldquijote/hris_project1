@@ -18,7 +18,7 @@ SECRET_KEY = 'django-insecure-yc_fr&a8sbyl!n_q1y#%q%ab_a#6y38adljegzq@&b9@glwlau
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost',  "*"]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -28,14 +28,16 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'employees',
-    # 'attendance',
+    'attendance',
     'users',
-    # 'config',
+    'holidays',
     'simple_history',
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'drf_spectacular',
+    'corsheaders',
+
 ]
 
 MIDDLEWARE = [
@@ -46,6 +48,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'hris.urls'
@@ -91,7 +94,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Manila'
 
 USE_I18N = True
 
@@ -114,7 +117,7 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.AnonRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '20/min',   # adjust to your comfort level
+        'anon': '500/min',   # adjust to your comfort level
     },
     'DEFAULT_SCHEMA_CLASS' : 'drf_spectacular.openapi.AutoSchema',
 }
@@ -133,3 +136,10 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Internal HR Management System',
     'VERSION': '1.0.0',
 }
+
+CORS_ALLOWED_ORIGINS = [
+        "http://localhost:5173",
+        "http://localhost:3000",   # For Create React App
+        "http://localhost:5173",
+    ]
+CORS_ALLOW_ALL_ORIGINS = True

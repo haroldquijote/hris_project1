@@ -35,32 +35,6 @@ class JobTitle(models.Model):
         ordering = ["title"]
 
 
-class WorkSchedule(models.Model):
-    """Work schedule defining working days and shift hours."""
-    name = models.CharField(max_length=100, unique=True)
-
-    # Working days
-    is_monday = models.BooleanField(default=False)
-    is_tuesday = models.BooleanField(default=False)
-    is_wednesday = models.BooleanField(default=False)
-    is_thursday = models.BooleanField(default=False)
-    is_friday = models.BooleanField(default=False)
-    is_saturday = models.BooleanField(default=False)
-    is_sunday = models.BooleanField(default=False)
-
-    # Shift details
-    shift_start = models.TimeField()
-    shift_end = models.TimeField()
-    grace_period_minutes = models.PositiveIntegerField(default=15)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        ordering = ['name']
 
 
 class Employee(models.Model):
@@ -107,7 +81,7 @@ class Employee(models.Model):
     date_of_resignation = models.DateField(null=True, blank=True)
 
     work_schedule = models.ForeignKey(
-        WorkSchedule,
+        'attendance.WorkSchedule',
         on_delete=models.PROTECT,
         related_name='employees',
         null=True,
@@ -161,6 +135,45 @@ class Employee(models.Model):
     class Meta:
         ordering = ["last_name", "first_name"]
 
+class AllowanceType(models.Model):
+    """Master list of allowance names (e.g., Food, Transport, Housing)."""
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+
+
+class EmployeeAllowance(models.Model):
+    """Assigns a specific allowance to an employee with an amount."""
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name='allowances'
+    )
+    allowance_type = models.ForeignKey(
+        AllowanceType,
+        on_delete=models.PROTECT,
+        related_name='employee_allowances'
+    )
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    effective_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.employee} – {self.allowance_type} ({self.amount})"
+
+    class Meta:
+        ordering = ['-effective_date']
+        verbose_name_plural = "Employee Allowances"
+
 
 class EmployeeSalary(models.Model):
     """Salary history for an employee – supports effective dating."""
@@ -173,7 +186,6 @@ class EmployeeSalary(models.Model):
 
     # Compensation
     base_salary = models.DecimalField(max_digits=12, decimal_places=2)
-    monthly_allowance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     # Effective dating
     effective_date = models.DateField()
