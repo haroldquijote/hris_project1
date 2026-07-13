@@ -3,10 +3,16 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from rest_framework.pagination import PageNumberPagination
 
 from .models import AttendanceRecord, WorkSchedule
 from .serializers import AttendanceRecordSerializer, WorkScheduleSerializer
 
+
+class StandardPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 # ========== ATTENDANCE RECORD VIEWS ==========
 
@@ -31,8 +37,12 @@ class AttendanceListCreateView(APIView):
         if status_filter:
             records = records.filter(status=status_filter.upper())
 
-        serializer = AttendanceRecordSerializer(records, many=True)
-        return Response(serializer.data)
+        paginator = StandardPagination()
+        paginated_records = paginator.paginate_queryset(records, request)
+        serializer = AttendanceRecordSerializer(paginated_records, many=True)
+        return paginator.get_paginated_response(serializer.data)
+    
+        
 
     def post(self, request):
         """Create a new attendance record (HR manual entry)"""
@@ -78,8 +88,10 @@ class WorkScheduleListCreateView(APIView):
 
     def get(self, request):
         schedules = WorkSchedule.objects.all()
-        serializer = WorkScheduleSerializer(schedules, many=True)
-        return Response(serializer.data)
+        paginator = StandardPagination()
+        paginated_schedules = paginator.paginate_queryset(schedules, request)
+        serializer = WorkScheduleSerializer(paginated_schedules, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
         serializer = WorkScheduleSerializer(data=request.data)

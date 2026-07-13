@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'attendance',
     'users',
     'holidays',
+    'leave',
     'simple_history',
     'rest_framework',
     'rest_framework_simplejwt',

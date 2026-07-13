@@ -16,6 +16,46 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'is_manual']
 
+    def validate(self, data):
+        clock_in = data.get('clock_in')
+        clock_out = data.get('clock_out')
+        record_date = data.get('date')
+
+        # 1. Clock‑out must be after clock‑in
+        if clock_in and clock_out:
+            if clock_out <= clock_in:
+                raise serializers.ValidationError({
+                    'clock_out': 'Clock‑out time must be after clock‑in time.'
+                })
+
+        # 2. Date consistency for clock‑in
+        if clock_in and record_date:
+            if clock_in.date() != record_date:
+                raise serializers.ValidationError({
+                    'clock_in': 'Clock‑in date does not match the record date.'
+                })
+
+        # 3. Date consistency for clock‑out
+        if clock_out and record_date:
+            if clock_out.date() != record_date:
+                raise serializers.ValidationError({
+                    'clock_out': 'Clock‑out date does not match the record date.'
+                })
+
+        # 4. Friendly duplicate‑record message
+        employee = data.get('employee')
+        date = data.get('date')
+        if employee and date:
+            existing = AttendanceRecord.objects.filter(employee=employee, date=date)
+            if self.instance:   # exclude current instance when updating
+                existing = existing.exclude(pk=self.instance.pk)
+            if existing.exists():
+                raise serializers.ValidationError({
+                    'employee': f'A record for this employee on {date} already exists. Please update the existing record instead.'
+                })
+
+        return data
+
 
 class WorkScheduleSerializer(serializers.ModelSerializer):
     class Meta:
