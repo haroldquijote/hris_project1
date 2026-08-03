@@ -80,6 +80,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'job_title_detail',
             'work_schedule_detail',
             # Basic info
+            'photo',
             'last_name',
             'first_name',
             'middle_name',

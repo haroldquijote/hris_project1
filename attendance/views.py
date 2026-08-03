@@ -66,6 +66,16 @@ class AttendanceDetailView(APIView):
 
     def put(self, request, pk):
         record = self.get_object(pk)
+        from payroll.models import PayPeriod
+        if PayPeriod.objects.filter(
+            start_date__lte=record.date,
+            end_date__gte=record.date,
+            status=PayPeriod.Status.LOCKED
+        ).exists():
+            return Response(
+                {'error': 'Cannot edit attendance in a locked pay period.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         serializer = AttendanceRecordSerializer(record, data=request.data)
         if serializer.is_valid():
             serializer.save()

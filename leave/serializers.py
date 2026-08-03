@@ -62,7 +62,7 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
 
 class LeaveRequestApproveSerializer(serializers.Serializer):
     """Used only for approving a request (no other fields)."""
-    status = serializers.ChoiceField(choices=['APPROVED'])
+    status = serializers.ChoiceField(choices=['APPROVED'], required=False)
 
     def validate(self, data):
         request = self.context['request_obj']
@@ -80,7 +80,7 @@ class LeaveRequestApproveSerializer(serializers.Serializer):
 
 
 class LeaveRequestRejectSerializer(serializers.Serializer):
-    status = serializers.ChoiceField(choices=['REJECTED'])
+    status = serializers.ChoiceField(choices=['REJECTED'], required=False)
 
     def validate(self, data):
         request = self.context['request_obj']
@@ -90,7 +90,7 @@ class LeaveRequestRejectSerializer(serializers.Serializer):
 
 
 class LeaveRequestCancelSerializer(serializers.Serializer):
-    status = serializers.ChoiceField(choices=['CANCELLED'])
+    status = serializers.ChoiceField(choices=['CANCELED'], required=False)
 
     def validate(self, data):
         request = self.context['request_obj']

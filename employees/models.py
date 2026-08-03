@@ -88,6 +88,9 @@ class Employee(models.Model):
         blank=True,
     )
 
+    # for ID 
+    photo = models.ImageField(upload_to='employee_photos/', blank=True, null=True)
+
     # Name
     last_name = models.CharField(max_length=100)
     first_name = models.CharField(max_length=100)

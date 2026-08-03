@@ -3,8 +3,9 @@ from django.db import models
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from .models import Employee, EmployeeSalary, Department, JobTitle,  AllowanceType, EmployeeAllowance
 from .serializers import (
@@ -37,8 +38,7 @@ class StandardPagination(PageNumberPagination):
 
 class DepartmentListView(APIView):
     """List all departments or create a new department"""
-    authentication_classes = []   
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """GET /api/employees/departments/ - List all departments"""
@@ -65,8 +65,7 @@ class DepartmentListView(APIView):
 
 class DepartmentDetailView(APIView):
     """Get, update or delete a single department"""
-    authentication_classes = []   
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_object(self, pk):
         # IMPROVEMENT ② : get_object_or_404 replaces manual try/except.
@@ -104,8 +103,7 @@ class DepartmentDetailView(APIView):
 
 class JobTitleListView(APIView):
     """List all job titles or create a new job title"""
-    authentication_classes = []   
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         job_titles = JobTitle.objects.all()
@@ -135,8 +133,7 @@ class JobTitleListView(APIView):
 
 class JobTitleDetailView(APIView):
     """Get, update or delete a single job title"""
-    authentication_classes = []   
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_object(self, pk):
         return get_object_or_404(JobTitle, pk=pk)
@@ -172,8 +169,8 @@ class JobTitleDetailView(APIView):
 
 class EmployeeListView(APIView):
     """List all employees or create a new employee"""
-    authentication_classes = []   
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
     
     def get(self, request):
         employees = Employee.objects.all()
@@ -218,8 +215,8 @@ class EmployeeListView(APIView):
 
 class EmployeeDetailView(APIView):
     """Get, update, or delete a single employee"""
-    authentication_classes = []   
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser] 
     
     def get_object(self, pk):
         return get_object_or_404(Employee, pk=pk)
@@ -257,8 +254,7 @@ class EmployeeDetailView(APIView):
 
 class EmployeeSalaryListView(APIView):
     """List salaries for an employee or create a new salary record"""
-    authentication_classes = []   
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, employee_pk):
         # IMPROVEMENT ② : get_object_or_404 applied here too
@@ -281,8 +277,7 @@ class EmployeeSalaryListView(APIView):
 
 class EmployeeSalaryDetailView(APIView):
     """Get, update or delete a specific salary record"""
-    authentication_classes = []   
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_object(self, pk):
         return get_object_or_404(EmployeeSalary, pk=pk)
@@ -345,7 +340,7 @@ class CurrentEmployeeSalaryView(APIView):
 # ========== ALLOWANCE TYPE VIEWS ==========
 
 class AllowanceTypeListView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         types = AllowanceType.objects.all()
@@ -361,7 +356,7 @@ class AllowanceTypeListView(APIView):
 
 
 class AllowanceTypeDetailView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_object(self, pk):
         return get_object_or_404(AllowanceType, pk=pk)
@@ -388,7 +383,7 @@ class AllowanceTypeDetailView(APIView):
 # ========== EMPLOYEE ALLOWANCE VIEWS ==========
 
 class EmployeeAllowanceListView(APIView):
-    permission_classes = [AllowAny]  
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, employee_pk):
         employee = get_object_or_404(Employee, pk=employee_pk)
@@ -408,7 +403,7 @@ class EmployeeAllowanceListView(APIView):
 
 
 class EmployeeAllowanceDetailView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_object(self, pk):
         return get_object_or_404(EmployeeAllowance, pk=pk)

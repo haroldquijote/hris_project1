@@ -32,6 +32,8 @@ INSTALLED_APPS = [
     'users',
     'holidays',
     'leave',
+    'payroll',
+    'overtime',
     'simple_history',
     'rest_framework',
     'rest_framework_simplejwt',
@@ -144,3 +146,9 @@ CORS_ALLOWED_ORIGINS = [
         "http://localhost:5173",
     ]
 CORS_ALLOW_ALL_ORIGINS = True
+
+import os
+from pathlib import Path
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

@@ -17,32 +17,42 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at', 'is_manual']
 
     def validate(self, data):
+        """
+        Custom validation:
+        1. clock_out must be after clock_in (if both are present).
+        2. clock_in date must match the 'date' field.
+        3. clock_out date must be the same or the next calendar day (overnight shift allowed).
+        4. Friendly duplicate record error.
+        """
+        from datetime import timedelta
+
         clock_in = data.get('clock_in')
         clock_out = data.get('clock_out')
         record_date = data.get('date')
 
-        # 1. Clock‑out must be after clock‑in
+        # 1. Check order of clock in/out
         if clock_in and clock_out:
             if clock_out <= clock_in:
                 raise serializers.ValidationError({
                     'clock_out': 'Clock‑out time must be after clock‑in time.'
                 })
 
-        # 2. Date consistency for clock‑in
+        # 2. Date consistency for clock-in
         if clock_in and record_date:
             if clock_in.date() != record_date:
                 raise serializers.ValidationError({
                     'clock_in': 'Clock‑in date does not match the record date.'
                 })
 
-        # 3. Date consistency for clock‑out
+        # 3. Date consistency for clock-out (allow overnight shift)
         if clock_out and record_date:
-            if clock_out.date() != record_date:
+            next_day = record_date + timedelta(days=1)
+            if clock_out.date() not in (record_date, next_day):
                 raise serializers.ValidationError({
-                    'clock_out': 'Clock‑out date does not match the record date.'
+                    'clock_out': 'Clock‑out date must be the same day or the next day.'
                 })
 
-        # 4. Friendly duplicate‑record message
+        # 4. Friendly duplicate record check
         employee = data.get('employee')
         date = data.get('date')
         if employee and date:

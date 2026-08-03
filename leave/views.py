@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from employees.models import Employee
+from payroll.models import PayPeriod
 
 from .models import (
     LeaveType, LeaveGrant, LeaveRequest, LeaveAdjustment, LeaveConfiguration
@@ -163,6 +164,25 @@ class LeaveRequestApproveView(APIView):
 
     def post(self, request, pk):
         lr = get_object_or_404(LeaveRequest, pk=pk)
+
+        # ===== LOCK CHECK START =====
+        from payroll.models import PayPeriod
+        from datetime import timedelta
+
+        current = lr.start_date
+        while current <= lr.end_date:
+            if PayPeriod.objects.filter(
+                start_date__lte=current,
+                end_date__gte=current,
+                status=PayPeriod.Status.LOCKED
+            ).exists():
+                return Response(
+                    {'error': 'Cannot approve leave. Some days fall in a locked pay period.'},
+                    status=400
+                )
+            current += timedelta(days=1)
+        # ===== LOCK CHECK END =====
+
         serializer = LeaveRequestApproveSerializer(data=request.data, context={'request_obj': lr})
         if serializer.is_valid():
             lr.status = LeaveRequest.Status.APPROVED
@@ -171,7 +191,7 @@ class LeaveRequestApproveView(APIView):
             lr.save()
             return Response(LeaveRequestSerializer(lr).data)
         return Response(serializer.errors, status=400)
-
+    
 
 class LeaveRequestRejectView(APIView):
     permission_classes = [IsAuthenticated]

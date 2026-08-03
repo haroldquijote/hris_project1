@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Payslip</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1.5cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            color: #000;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .header img {
+            max-width: 120px;
+            height: auto;
+            margin-bottom: 5px;
+        }
+        .company-name {
+            font-weight: bold;
+            font-size: 16px;
+            text-transform: uppercase;
+        }
+        .doc-title {
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 3px;
+        }
+
+        .info-row {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        .left-info {
+            float: left;
+            width: 60%;
+        }
+        .right-info {
+            float: right;
+            width: 40%;
+            text-align: right;
+        }
+        .clearfix {
+            clear: both;
+        }
+
+        .three-col {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        .col {
+            float: left;
+            width: 32%;
+            margin-right: 2%;
+        }
+        .col:last-child {
+            margin-right: 0;
+        }
+        .section-title {
+            font-weight: bold;
+            border-bottom: 1px solid #000;
+            margin-bottom: 5px;
+            padding-bottom: 2px;
+        }
+        .line {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+        .line .label {
+            font-weight: bold;
+        }
+        .line .value {
+            text-align: right;
+        }
+
+        .leave-box {
+            background: #eef5fc;
+            padding: 8px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .leave-box .line {
+            justify-content: flex-start;
+        }
+
+        .remarks {
+            margin-bottom: 10px;
+        }
+
+        .signatures {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .signature-block {
+            width: 45%;
+        }
+        .signature-block p {
+            margin: 8px 0;
+        }
+
+        /* Clear floats */
+        .clearfix::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        {% if logo_base64 %}
+            <img src="data:image/png;base64,{{ logo_base64 }}" alt="Logo">
+        {% endif %}
+        <div class="company-name">{{ company_name }}</div>
+        <div class="doc-title">EMPLOYEE PAYSLIP</div>
+    </div>
+
+    <!-- EMPLOYEE INFORMATION -->
+    <div class="info-row clearfix">
+        <div class="left-info">
+            <p><strong>NAME OF EMPLOYEE:</strong> {{ payslip.employee.full_name }}</p>
+            <p><strong>DESIGNATION:</strong> {{ job_title }}</p>
+            <p><strong>DAILY RATE:</strong> {{ daily_rate|floatformat:2 }}</p>
+            <p><strong>NO. OF DAYS:</strong> {{ days_in_period }}</p>
+        </div>
+        <div class="right-info">
+            <p><strong>DATE COVERED:</strong> {{ payslip.pay_period.start_date|date:"M d, Y" }} – {{ payslip.pay_period.end_date|date:"M d, Y" }}</p>
+        </div>
+    </div>
+
+    <!-- THREE COLUMNS -->
+    <div class="three-col clearfix">
+        <!-- EARNINGS -->
+        <div class="col">
+            <div class="section-title">EARNINGS</div>
+            <div class="line"><span class="label">BASIC RATE:</span> <span class="value">{{ basic_pay|floatformat:2 }}</span></div>
+            <div class="line"><span class="label">ALLOWANCE:</span> <span class="value">{{ allowances_total|floatformat:2 }}</span></div>
+            <div class="line"><span class="label">OT REGDAY:</span> <span class="value">{{ overtime_regular_pay|floatformat:2 }}</span></div>
+            <div class="line"><span class="label">OT SPCLDAY:</span> <span class="value">{{ overtime_special_pay|floatformat:2 }}</span></div>
+            <div class="line"><span class="label">RD PREM:</span> <span class="value">{{ rest_day_premium_total|floatformat:2 }}</span></div>
+            <div class="line"><span class="label">LEG. HOL.:</span> <span class="value">{{ legal_holiday_pay|floatformat:2 }}</span></div>
+            <div class="line"><span class="label">SPCL HOL.:</span> <span class="value">{{ special_holiday_pay|floatformat:2 }}</span></div>
+            <div class="line"><span class="label">NSD:</span> <span class="value">{{ nsd|floatformat:2 }}</span></div>
+        </div>
+
+        <!-- DEDUCTIONS -->
+        <div class="col">
+            <div class="section-title">DEDUCTIONS</div>
+            <div class="line"><span class="label">SSS:</span> <span class="value">{{ sss_deduction|floatformat:2 }}</span></div>
+            <div class="line"><span class="label">PAGIBIG:</span> <span class="value">{{ pagibig_deduction|floatformat:2 }}</span></div>
+            <div class="line"><span class="label">PHILHEALTH:</span> <span class="value">{{ philhealth_deduction|floatformat:2 }}</span></div>
+            <div class="line"><span class="label">LATES:</span> <span class="value">{{ late_deduction_total|floatformat:2 }}</span></div>
+            <div class="line"><span class="label">ABSENT:</span> <span class="value">{{ absent_deduction_total|floatformat:2 }}</span></div>
+            <div class="line"><span class="label">TAX DEDUCT:</span> <span class="value">{{ tax_deduction|floatformat:2 }}</span></div>
+            {% for adj in adjustments %}
+                <div class="line"><span class="label">{{ adj.reason|upper }}:</span> <span class="value">{{ adj.amount|floatformat:2 }}</span></div>
+            {% endfor %}
+        </div>
+
+        <!-- PAY SUMMARY -->
+        <div class="col">
+            <div class="section-title">PAY SUMMARY</div>
+            <div class="line"><span class="label">GROSS PAY:</span> <span class="value">{{ gross_pay|floatformat:2 }}</span></div>
+            <div class="line"><span class="label">DEDUCTIONS:</span> <span class="value">{{ total_deductions|floatformat:2 }}</span></div>
+            <hr>
+            <div class="line" style="font-weight: bold; font-size: 13px;"><span>NET PAY:</span> <span>{{ net_pay|floatformat:2 }}</span></div>
+        </div>
+    </div>
+
+    <!-- LEAVE & ABSENCE -->
+    <div class="leave-box">
+        <p><strong>No. of Leave:</strong> {{ leave_count }} &nbsp;&nbsp; <strong>Date:</strong> {{ leave_dates_str }}</p>
+        <p><strong>No. of Absence:</strong> {{ absence_count }} &nbsp;&nbsp; <strong>Date:</strong> {{ absence_dates_str }}</p>
+        <p><strong>No. of Remaining Leave:</strong> {{ remaining_leave_balance|floatformat:2 }}</p>
+    </div>
+
+    <!-- REMARKS -->
+    <div class="remarks">
+        <p><strong>Remarks:</strong> {{ payslip.remarks|default:"" }}</p>
+    </div>
+
+    <!-- SIGNATURES -->
+    <div class="signatures">
+        <div class="signature-block">
+            <p><strong>Prepared By:</strong></p>
+            <p>_______________________________</p>
+            <p><strong>Checked By:</strong></p>
+            <p>_______________________________</p>
+        </div>
+        <div class="signature-block">
+            <p><strong>Employee Signature:</strong></p>
+            <p>_______________________________</p>
+            <p><strong>Date:</strong></p>
+            <p>_______________________________</p>
+        </div>
+    </div>
+
+</body>
+</html>
