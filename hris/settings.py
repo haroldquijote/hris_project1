@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'leave',
     'payroll',
     'overtime',
+    'recruitment',
     'simple_history',
     'rest_framework',
     'rest_framework_simplejwt',

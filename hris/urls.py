@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/leave/', include('leave.urls')),
     path('api/payroll/', include('payroll.urls')),
     path('api/overtime/', include('overtime.urls')),
+    path('api/recruitment/', include('recruitment.urls')),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

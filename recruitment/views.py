@@ -7,10 +7,13 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.db import transaction
 import os
 import logging
+from .anonymizer import anonymize_text
+from .llm_grader import grade_resume
+from .text_extractor import extract_text
 
 from .models import JobPosting, Candidate
 from .serializers import JobPostingSerializer, CandidateSerializer
-from .ai import extract_text, compute_matching_keywords
+
 
 logger = logging.getLogger(__name__)
 
@@ -76,49 +79,50 @@ class CandidateUploadView(APIView):
             ext = os.path.splitext(file.name)[1].lower()
             if ext not in allowed_extensions:
                 return Response(
-                {'error': f'Unsupported file type "{ext}". Only PDF and DOCX files are accepted.'},
-                status=status.HTTP_400_BAD_REQUEST
+                    {'error': f'Unsupported file type "{ext}". Only PDF and DOCX files are accepted.'},
+                    status=status.HTTP_400_BAD_REQUEST
                 )
-    # -------------------------------------------------
-    
+
         created = []
         with transaction.atomic():
             for file in files:
                 candidate = Candidate.objects.create(
                     job_posting=job,
                     resume=file,
-                    name=file.name   # placeholder, HR can rename later
+                    name=file.name
                 )
                 created.append(candidate)
 
-        # Extract text & compute explainable scores
+        # Anonymize and grade
         for candidate in created:
             try:
-                text = extract_text(candidate.resume.path)
-                candidate.extracted_text = text
-                if text.strip():
-                    score, matching_kw = compute_matching_keywords(
-                        job.description,
-                        job.required_skills or '',
-                        text
-                    )
-                    candidate.similarity_score = score
-                    candidate.matching_keywords = matching_kw
+                raw_text = extract_text(candidate.resume.path)
+                if raw_text.strip():
+                    anon_text = anonymize_text(raw_text)
+                    candidate.anonymized_text = anon_text
+
+                    result = grade_resume(job.description, anon_text)
+                    if result and 'score' in result and 'justification' in result:
+                        candidate.llm_score = float(result['score'])
+                        candidate.llm_justification = result['justification']
+                    else:
+                        candidate.llm_score = 0.0
+                        candidate.llm_justification = "AI scoring failed – please review manually."
                 else:
-                    candidate.similarity_score = 0.0
-                    candidate.matching_keywords = {}
+                    candidate.anonymized_text = ''
+                    candidate.llm_score = 0.0
+                    candidate.llm_justification = "No text could be extracted from the resume."
                 candidate.save()
             except Exception as e:
-                logger.exception("Scoring failed")
-                candidate.similarity_score = 0.0
-                candidate.matching_keywords = {}
+                logger.exception("Candidate processing failed")
+                candidate.anonymized_text = ''
+                candidate.llm_score = 0.0
+                candidate.llm_justification = "Error during processing."
                 candidate.save()
 
-        # Return all candidates for this job, ordered by score
         job.refresh_from_db()
         serializer = CandidateSerializer(job.candidates.all(), many=True)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
 
 class CandidateDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -155,14 +159,18 @@ class RerankCandidatesView(APIView):
         candidates = job.candidates.all()
         count = 0
         for candidate in candidates:
-            if candidate.extracted_text.strip():
-                score, matching_kw = compute_matching_keywords(
-                    job.description,
-                    job.required_skills or '',
-                    candidate.extracted_text
-                )
-                candidate.similarity_score = score
-                candidate.matching_keywords = matching_kw
+            if not candidate.anonymized_text:
+                raw = extract_text(candidate.resume.path)
+                anon = anonymize_text(raw) if raw else ''
+                candidate.anonymized_text = anon
+                candidate.save()
+            if candidate.anonymized_text.strip():
+                result = grade_resume(job.description, candidate.anonymized_text)
+                if result and 'score' in result:
+                    candidate.llm_score = float(result['score'])
+                    candidate.llm_justification = result.get('justification', '')
+                else:
+                    candidate.llm_score = 0.0
                 candidate.save()
                 count += 1
         return Response({'message': f'Re‑ranked {count} candidates.'})

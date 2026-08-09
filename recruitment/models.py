@@ -37,17 +37,16 @@ class Candidate(models.Model):
         on_delete=models.CASCADE,
         related_name='candidates'
     )
-    name = models.CharField(max_length=200, blank=True, help_text="Can be set by HR or extracted automatically")
+    name = models.CharField(max_length=200, blank=True)
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=30, blank=True)
     resume = models.FileField(upload_to='resumes/')
-    extracted_text = models.TextField(blank=True)
-    similarity_score = models.FloatField(default=0.0)
-    matching_keywords = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Explainability breakdown: matched_skills, missing_skills, top_contributing_terms"
-    )
+
+    # LLM grading results
+    llm_score = models.FloatField(null=True, blank=True, help_text="Score 0–100 from DeepSeek")
+    llm_justification = models.TextField(blank=True, help_text="Two‑sentence explanation from the AI")
+    anonymized_text = models.TextField(blank=True, help_text="Resume text after anonymisation")
+
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
@@ -57,7 +56,7 @@ class Candidate(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-similarity_score']
+        ordering = ['-llm_score']   # rank from highest to lowest
 
     def __str__(self):
         return self.name or f"Candidate {self.id}"

@@ -7,5 +7,5 @@ class JobPostingAdmin(admin.ModelAdmin):
 
 @admin.register(Candidate)
 class CandidateAdmin(admin.ModelAdmin):
-    list_display = ['name', 'job_posting', 'similarity_score', 'status', 'created_at']
+    list_display = ['name', 'job_posting',  'status', 'created_at']
     list_filter = ['status', 'job_posting']

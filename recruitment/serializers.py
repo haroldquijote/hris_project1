@@ -7,13 +7,12 @@ class CandidateSerializer(serializers.ModelSerializer):
         model = Candidate
         fields = [
             'id', 'job_posting', 'name', 'email', 'phone',
-            'resume', 'extracted_text', 'similarity_score',
-            'matching_keywords',
+            'resume', 'llm_score', 'llm_justification', 'anonymized_text',
             'status', 'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'id', 'extracted_text', 'similarity_score',
-            'matching_keywords', 'created_at', 'updated_at'
+            'id', 'llm_score', 'llm_justification', 'anonymized_text',
+            'created_at', 'updated_at'
         ]
 
 
