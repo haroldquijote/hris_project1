@@ -205,7 +205,6 @@ class EmployeeSalaryCreateSerializer(serializers.ModelSerializer):
         fields = [
             'employee',
             'base_salary',
-            'monthly_allowance',
             'effective_date',
             'end_date',
             'reason',

@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import JSONParser,MultiPartParser, FormParser
 
 from .models import Employee, EmployeeSalary, Department, JobTitle,  AllowanceType, EmployeeAllowance
 from .serializers import (
@@ -170,7 +170,7 @@ class JobTitleDetailView(APIView):
 class EmployeeListView(APIView):
     """List all employees or create a new employee"""
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     def get(self, request):
         employees = Employee.objects.all()

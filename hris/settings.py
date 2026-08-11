@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'payroll',
     'overtime',
     'recruitment',
+    'dashboard',
     'simple_history',
     'rest_framework',
     'rest_framework_simplejwt',
