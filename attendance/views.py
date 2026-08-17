@@ -2,11 +2,12 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
 from rest_framework.pagination import PageNumberPagination
-
+from users.permissions import CanDeleteRecords
+from rest_framework.permissions import IsAuthenticated
 from .models import AttendanceRecord, WorkSchedule
 from .serializers import AttendanceRecordSerializer, WorkScheduleSerializer
+from audit.utils import log_action  
 
 
 class StandardPagination(PageNumberPagination):
@@ -17,7 +18,7 @@ class StandardPagination(PageNumberPagination):
 # ========== ATTENDANCE RECORD VIEWS ==========
 
 class AttendanceListCreateView(APIView):
-    permission_classes = [AllowAny]   # for testing only
+    permission_classes = [IsAuthenticated]  
 
     def get(self, request):
         """List all attendance records with optional filters"""
@@ -48,13 +49,13 @@ class AttendanceListCreateView(APIView):
         """Create a new attendance record (HR manual entry)"""
         serializer = AttendanceRecordSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            record = serializer.save()  
+            log_action(request.user, 'CREATE', 'AttendanceRecord', record.id, f"Created attendance for {record.employee.full_name}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 class AttendanceDetailView(APIView):
-    permission_classes = [AllowAny]   # for testing only
+    permission_classes = [IsAuthenticated]  
 
     def get_object(self, pk):
         return get_object_or_404(AttendanceRecord, pk=pk)
@@ -79,11 +80,15 @@ class AttendanceDetailView(APIView):
         serializer = AttendanceRecordSerializer(record, data=request.data)
         if serializer.is_valid():
             serializer.save()
+            log_action(request.user, 'UPDATE', 'AttendanceRecord', record.id, f"Updated attendance for {record.employee.full_name}")
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
+        self.permission_classes = [IsAuthenticated, CanDeleteRecords]
+        self.check_permissions(request)
         record = self.get_object(pk)
+        log_action(request.user, 'DELETE', 'AttendanceRecord', record.id, f"Deleted attendance for {record.employee.full_name}")
         record.delete()
         return Response(
             {"message": "Attendance record deleted"},
@@ -94,7 +99,7 @@ class AttendanceDetailView(APIView):
 # ========== WORK SCHEDULE VIEWS ==========
 
 class WorkScheduleListCreateView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         schedules = WorkSchedule.objects.all()
@@ -112,7 +117,7 @@ class WorkScheduleListCreateView(APIView):
 
 
 class WorkScheduleDetailView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_object(self, pk):
         return get_object_or_404(WorkSchedule, pk=pk)

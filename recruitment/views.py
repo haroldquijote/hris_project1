@@ -10,9 +10,10 @@ import logging
 from .anonymizer import anonymize_text
 from .llm_grader import grade_resume
 from .text_extractor import extract_text
-
+from users.permissions import CanDeleteRecords
 from .models import JobPosting, Candidate
 from .serializers import JobPostingSerializer, CandidateSerializer
+from audit.utils import log_action
 
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,8 @@ class JobPostingListCreateView(APIView):
     def post(self, request):
         serializer = JobPostingSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            job = serializer.save()
+            log_action(request.user, 'CREATE', 'JobPosting', job.id, f"Created job posting '{job.title}'")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -50,15 +52,19 @@ class JobPostingDetailView(APIView):
         serializer = JobPostingSerializer(job, data=request.data)
         if serializer.is_valid():
             serializer.save()
+            log_action(request.user, 'UPDATE', 'JobPosting', job.id, f"Updated job posting '{job.title}'")
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
+        self.permission_classes = [IsAuthenticated, CanDeleteRecords]
+        self.check_permissions(request)
         job = self.get_object(pk)
         # Delete associated resume files
         for candidate in job.candidates.all():
             if candidate.resume and os.path.isfile(candidate.resume.path):
                 os.remove(candidate.resume.path)
+        log_action(request.user, 'DELETE', 'JobPosting', job.id, f"Deleted job posting '{job.title}'")
         job.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -119,10 +125,11 @@ class CandidateUploadView(APIView):
                 candidate.llm_score = 0.0
                 candidate.llm_justification = "Error during processing."
                 candidate.save()
+            log_action(request.user, 'CREATE', 'Candidate', candidate.id, f"Uploaded resume for {job.title}")
 
         job.refresh_from_db()
         serializer = CandidateSerializer(job.candidates.all(), many=True)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)        
 
 class CandidateDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -140,13 +147,17 @@ class CandidateDetailView(APIView):
         serializer = CandidateSerializer(candidate, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            log_action(request.user, 'UPDATE', 'Candidate', candidate.id, f"Updated candidate {candidate.name}")
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
+        self.permission_classes = [IsAuthenticated, CanDeleteRecords]
+        self.check_permissions(request)
         candidate = self.get_object(pk)
         if candidate.resume and os.path.isfile(candidate.resume.path):
             os.remove(candidate.resume.path)
+        log_action(request.user, 'DELETE', 'Candidate', candidate.id, f"Deleted candidate {candidate.name}")
         candidate.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -173,4 +184,4 @@ class RerankCandidatesView(APIView):
                     candidate.llm_score = 0.0
                 candidate.save()
                 count += 1
-        return Response({'message': f'Re‑ranked {count} candidates.'})
+        return Response({'message': f'Re‑ranked {count} candidates.'})  

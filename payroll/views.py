@@ -1,14 +1,13 @@
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from decimal import Decimal
 from django.utils import timezone
 import csv
 from django.http import HttpResponse
-
-
+from audit.utils import log_action
 from .models import PayPeriod, Payslip, PayslipDailyDetail, PayslipAdjustment, CompanySettings, SSSContribution, PhilHealthContribution, PagIBIGContribution
 from .serializers import PayPeriodSerializer, PayslipSerializer, PayslipDailyDetailSerializer, PayslipAdjustmentSerializer
 from .utils import compute_phase2_gross_pay
@@ -17,6 +16,7 @@ from .utils import compute_phase2_gross_pay
 from .gov_deductions import compute_government_deductions
 from overtime.overtime_utils import compute_overtime_pay, get_overtime_for_day, determine_day_type
 from leave.utils import get_balance
+from users.permissions import CanLockPayroll
 
 # ---------- Pay Period CRUD ----------
 class PayPeriodListCreateView(APIView):
@@ -137,6 +137,7 @@ class ComputeGrossPayView(APIView):
                     'absent_deduction_total': result['absent_deduction_total'],
                     'undertime_deduction_total': result['undertime_deduction_total'],
                     'holiday_pay_total': result['holiday_pay_total'],
+                    'rest_day_premium_total': result['rest_day_premium_total'],
                     'overtime_pay': overtime_total,
                     'overtime_regular_pay': overtime_regular_pay,
                     'overtime_special_pay': overtime_special_pay,
@@ -165,7 +166,7 @@ class ComputeGrossPayView(APIView):
             # ───────────── 6. Enrich daily details with overtime info ─────────────
             # This loop adds overtime minutes, pay, and type to each day before saving
             for detail in result['daily_details']:
-                    if detail['working_day']:
+                if detail['working_day']:
                         ot_hours, ot_pay = get_overtime_for_day(employee, detail['date'])
                         if ot_hours > 0:
                             detail['overtime_minutes'] = int(ot_hours * 60)
@@ -175,7 +176,7 @@ class ComputeGrossPayView(APIView):
                             detail['overtime_minutes'] = 0
                             detail['overtime_pay'] = Decimal('0.00')
                             detail['overtime_type'] = None
-                    else:
+                else:
                         detail['overtime_minutes'] = 0
                         detail['overtime_pay'] = Decimal('0.00')
                         detail['overtime_type'] = None
@@ -207,7 +208,7 @@ class ComputeGrossPayView(APIView):
             PayslipDailyDetail.objects.bulk_create(daily_objects)
 
             created_count += 1
-        
+            log_action(request.user, 'UPDATE', 'Payslip', payslip.id, f"Computed payslip for {payslip.employee.full_name}")
         return Response({
             'message': f'Payslips generated for {created_count} employees. '
                        f'{skipped_count} skipped (no active salary).'
@@ -287,7 +288,8 @@ class CompanySettingsView(APIView):
         return Response({'message': 'Company settings updated'})
 
 class PayPeriodLockView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanLockPayroll]
+
 
     def post(self, request, pk):
         pay_period = get_object_or_404(PayPeriod, pk=pk)
@@ -299,6 +301,7 @@ class PayPeriodLockView(APIView):
         pay_period.locked_by = request.user
         pay_period.locked_at = timezone.now()
         pay_period.save()
+        log_action(request.user, 'LOCK', 'PayPeriod', pay_period.id, f"Locked pay period {pay_period.start_date} to {pay_period.end_date}")
 
         # Optionally mark all DRAFT payslips as FINAL
         finalize = request.data.get('finalize_payslips', True)
@@ -312,7 +315,8 @@ class PayPeriodLockView(APIView):
 
 
 class PayPeriodUnlockView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanLockPayroll]
+
 
     def post(self, request, pk):
         pay_period = get_object_or_404(PayPeriod, pk=pk)
@@ -324,6 +328,7 @@ class PayPeriodUnlockView(APIView):
         pay_period.unlocked_by = request.user
         pay_period.unlocked_at = timezone.now()
         pay_period.save()
+        log_action(request.user, 'UNLOCK', 'PayPeriod', pay_period.id, f"Unlocked pay period {pay_period.start_date} to {pay_period.end_date}")
 
         return Response({'message': 'Period unlocked successfully.'}, status=status.HTTP_200_OK)
 

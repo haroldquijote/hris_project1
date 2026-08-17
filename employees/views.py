@@ -6,7 +6,8 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import JSONParser,MultiPartParser, FormParser
-
+from users.permissions import CanManageEmployees
+from audit.utils import log_action
 from .models import Employee, EmployeeSalary, Department, JobTitle,  AllowanceType, EmployeeAllowance
 from .serializers import (
     EmployeeSerializer,
@@ -205,18 +206,24 @@ class EmployeeListView(APIView):
         serializer = EmployeeListSerializer(paginated_employees, many=True)
         return paginator.get_paginated_response(serializer.data)
 
+class EmployeeListView(APIView):
+    permission_classes = [IsAuthenticated]   
+
     def post(self, request):
+        self.permission_classes = [IsAuthenticated, CanManageEmployees]
+        self.check_permissions(request)
+
         serializer = EmployeeSerializer(data=request.data)
         if serializer.is_valid():
             employee = serializer.save()
+            log_action(request.user, 'CREATE', 'Employee', employee.id, f"Created employee {employee.company_id}")
             return Response(EmployeeSerializer(employee).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class EmployeeDetailView(APIView):
     """Get, update, or delete a single employee"""
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser] 
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     def get_object(self, pk):
         return get_object_or_404(Employee, pk=pk)
@@ -227,23 +234,32 @@ class EmployeeDetailView(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
+        self.permission_classes = [IsAuthenticated, CanManageEmployees]
+        self.check_permissions(request)
         employee = self.get_object(pk)
         serializer = EmployeeSerializer(employee, data=request.data)
         if serializer.is_valid():
             serializer.save()
+            log_action(request.user, 'UPDATE', 'Employee', employee.id, f"Updated employee {employee.company_id}")
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk):
+        self.permission_classes = [IsAuthenticated, CanManageEmployees]
+        self.check_permissions(request)
         employee = self.get_object(pk)
         serializer = EmployeeSerializer(employee, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            log_action(request.user, 'UPDATE', 'Employee', employee.id, f"Partially updated employee {employee.company_id}")
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
+        self.permission_classes = [IsAuthenticated, CanManageEmployees]
+        self.check_permissions(request)
         employee = self.get_object(pk)
+        log_action(request.user, 'DELETE', 'Employee', employee.id, f"Deleted employee {employee.company_id}")
         employee.delete()
         return Response({"message": "Employee deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
@@ -257,7 +273,6 @@ class EmployeeSalaryListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, employee_pk):
-        # IMPROVEMENT ② : get_object_or_404 applied here too
         employee = get_object_or_404(Employee, pk=employee_pk)
         salaries = employee.salaries.all()
         serializer = EmployeeSalarySerializer(salaries, many=True)

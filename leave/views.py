@@ -7,7 +7,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from employees.models import Employee
 from payroll.models import PayPeriod
-
+from users.permissions import CanManageLeave,CanManageLeaveAdjustments
+from audit.utils import log_action
 from .models import (
     LeaveType, LeaveGrant, LeaveRequest, LeaveAdjustment, LeaveConfiguration
 )
@@ -106,7 +107,8 @@ class LeaveRequestListCreateView(APIView):
     def post(self, request):
         serializer = LeaveRequestSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()   # status defaults to PENDING
+            leave_request = serializer.save()
+            log_action(request.user, 'CREATE', 'LeaveRequest', leave_request.id, f"Created leave request for {leave_request.employee.full_name}")
             return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
 
@@ -160,7 +162,7 @@ class LeaveRequestDetailView(APIView):
 
 # ---------- Leave Actions (Approve / Reject / Cancel) ----------
 class LeaveRequestApproveView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageLeave]
 
     def post(self, request, pk):
         lr = get_object_or_404(LeaveRequest, pk=pk)
@@ -189,12 +191,13 @@ class LeaveRequestApproveView(APIView):
             lr.reviewed_by = request.user
             lr.reviewed_at = timezone.now()
             lr.save()
+            log_action(request.user, 'APPROVE', 'LeaveRequest', lr.id, f"Approved leave for {lr.employee.full_name}")
             return Response(LeaveRequestSerializer(lr).data)
         return Response(serializer.errors, status=400)
     
 
 class LeaveRequestRejectView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageLeave]
 
     def post(self, request, pk):
         lr = get_object_or_404(LeaveRequest, pk=pk)
@@ -204,22 +207,25 @@ class LeaveRequestRejectView(APIView):
             lr.reviewed_by = request.user
             lr.reviewed_at = timezone.now()
             lr.save()
+            log_action(request.user, 'REJECT', 'LeaveRequest', lr.id, f"Rejected leave for {lr.employee.full_name}")
             return Response(LeaveRequestSerializer(lr).data)
         return Response(serializer.errors, status=400)
 
 
 class LeaveRequestCancelView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageLeave]
 
     def post(self, request, pk):
         lr = get_object_or_404(LeaveRequest, pk=pk)
         serializer = LeaveRequestCancelSerializer(data=request.data, context={'request_obj': lr})
         if serializer.is_valid():
             lr.status = LeaveRequest.Status.CANCELLED
+            lr.reviewed_by = request.user
+            lr.reviewed_at = timezone.now()
             lr.save()
+            log_action(request.user, 'CANCEL', 'LeaveRequest', lr.id, f"Cancelled leave for {lr.employee.full_name}")
             return Response(LeaveRequestSerializer(lr).data)
         return Response(serializer.errors, status=400)
-
 
 # ---------- Balance & Reports ----------
 class EmployeeBalanceView(APIView):
@@ -285,6 +291,9 @@ class LeaveAdjustmentListCreateView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
+        self.permission_classes = [IsAuthenticated, CanManageLeaveAdjustments]
+        self.check_permissions(request)
+
         data = request.data.copy()
         data['created_by'] = request.user.id
         serializer = LeaveAdjustmentSerializer(data=data)

@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ObjectDoesNotExist
+from .models import Profile
 import logging
 
 # Create a logger for this module – helps with debugging
@@ -15,26 +16,31 @@ logger = logging.getLogger(__name__)
 # Used by the /api/me/ endpoint.
 # ------------------------------------------------------------------
 class CurrentUserSerializer(serializers.ModelSerializer):
-    # These fields are not directly on the User model; they come from
-    # the related Employee object. We use SerializerMethodField to
-    # compute their values.
     full_name = serializers.SerializerMethodField()
     company_id = serializers.SerializerMethodField()
     job_title = serializers.SerializerMethodField()
     department = serializers.SerializerMethodField()
 
+    # RBAC fields
+    role = serializers.CharField(source='profile.role', read_only=True)
+    must_change_password = serializers.BooleanField(source='profile.must_change_password', read_only=True)
+    can_manage_leave = serializers.BooleanField(source='profile.can_manage_leave', read_only=True)
+    can_manage_overtime = serializers.BooleanField(source='profile.can_manage_overtime', read_only=True)
+    can_manage_employees = serializers.BooleanField(source='profile.can_manage_employees', read_only=True)
+    can_delete_records = serializers.BooleanField(source='profile.can_delete_records', read_only=True)
+    can_lock_payroll = serializers.BooleanField(source='profile.can_lock_payroll', read_only=True)
+    can_manage_leave_adjustments = serializers.BooleanField(source='profile.can_manage_leave_adjustments', read_only=True)
+
     class Meta:
         model = User
-        # Only expose the fields a user needs to see about themselves.
-        # No sensitive data like password or email is included here.
         fields = [
-            'id',
-            'username',
-            'full_name',
-            'company_id',
-            'job_title',
-            'department',
+            'id', 'username', 'full_name', 'company_id',
+            'job_title', 'department',
+            'role', 'must_change_password',
+            'can_manage_leave', 'can_manage_overtime',
+            'can_manage_employees', 'can_delete_records', 'can_lock_payroll','can_manage_leave_adjustments',
         ]
+
 
     # ---------------------------------------------------------------
     # Helper: Safely retrieve the Employee linked to this user.
@@ -58,13 +64,6 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             logger.exception(f"Unexpected error retrieving employee for {obj.username}")
             return None
 
-    # ---------------------------------------------------------------
-    # Field methods – each computes one value for the response.
-    # All follow the same pattern:
-    # 1. Get the employee (or None)
-    # 2. Safely access the desired attribute
-    # 3. Return the value or None if not available
-    # ---------------------------------------------------------------
 
     def get_full_name(self, obj):
         employee = self._get_employee(obj)
@@ -139,3 +138,36 @@ class ChangePasswordSerializer(serializers.Serializer):
                 "new_password": "New password cannot be the same as old password."
             })
         return data
+
+class AssistantListSerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    full_name = serializers.SerializerMethodField()
+    employee_name = serializers.SerializerMethodField()
+    is_active = serializers.BooleanField(source='user.is_active', read_only=True)
+
+    class Meta:
+        model = Profile
+        fields = [
+            'id', 'user_id', 'username', 'employee_name', 'full_name',
+            'role', 'is_active', 'must_change_password',
+            'can_manage_leave', 'can_manage_overtime',
+            'can_manage_employees', 'can_delete_records', 'can_lock_payroll','can_manage_leave_adjustments'
+        ]
+
+    def get_full_name(self, obj):
+        return obj.employee.full_name if obj.employee else obj.user.username
+
+    def get_employee_name(self, obj):
+        return obj.employee.full_name if obj.employee else ""
+
+class AssistantPermissionsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = [
+            'can_manage_leave', 'can_manage_overtime',
+            'can_manage_employees', 'can_delete_records', 'can_lock_payroll','can_manage_leave_adjustments',     
+        ]
+
+class CreateAssistantSerializer(serializers.Serializer):
+    company_id = serializers.CharField(max_length=50)

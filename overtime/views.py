@@ -4,10 +4,11 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-
+from users.permissions import CanManageOvertime, IsHRAdmin
+from audit.utils import log_action
 from .models import OvertimeRequest, OvertimeConfiguration
 from .serializers import OvertimeRequestSerializer, OvertimeConfigurationSerializer
-from payroll.models import PayPeriod   # to check period lock
+from payroll.models import PayPeriod  
 
 
 class OvertimeRequestListCreateView(APIView):
@@ -35,7 +36,8 @@ class OvertimeRequestListCreateView(APIView):
     def post(self, request):
         serializer = OvertimeRequestSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()   # status defaults to PENDING
+            ot = serializer.save()   
+            log_action(request.user, 'CREATE', 'OvertimeRequest', ot.id, f"Created overtime for {ot.employee.full_name}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -58,12 +60,13 @@ class OvertimeRequestDetailView(APIView):
         serializer = OvertimeRequestSerializer(ot, data=request.data)
         if serializer.is_valid():
             serializer.save()
+            log_action(request.user, 'UPDATE', 'OvertimeRequest', ot.id, f"Updated overtime request for {ot.employee.full_name}")
             return Response(serializer.data)
         return Response(serializer.errors, status=400)
 
 
 class OvertimeRequestApproveView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageOvertime]
 
     def post(self, request, pk):
         ot = get_object_or_404(OvertimeRequest, pk=pk)
@@ -81,12 +84,28 @@ class OvertimeRequestApproveView(APIView):
         ot.approved_by = request.user
         ot.approved_at = timezone.now()
         ot.save()
+        log_action(request.user, 'APPROVE', 'OvertimeRequest', ot.id, f"Approved overtime for {ot.employee.full_name}")
         serializer = OvertimeRequestSerializer(ot)
         return Response(serializer.data)
 
 
+class OvertimeRequestCancelView(APIView):
+    permission_classes = [IsAuthenticated, CanManageOvertime]
+
+    def post(self, request, pk):
+        ot = get_object_or_404(OvertimeRequest, pk=pk)
+        if ot.status != OvertimeRequest.Status.APPROVED:
+            return Response({'error': 'Only approved requests can be cancelled.'}, status=400)
+        ot.status = OvertimeRequest.Status.CANCELLED
+        ot.approved_by = request.user
+        ot.approved_at = timezone.now()
+        ot.save()
+        log_action(request.user, 'CANCEL', 'OvertimeRequest', ot.id, f"Cancelled overtime for {ot.employee.full_name}")
+        serializer = OvertimeRequestSerializer(ot)
+        return Response(serializer.data)
+
 class OvertimeRequestRejectView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageOvertime]
 
     def post(self, request, pk):
         ot = get_object_or_404(OvertimeRequest, pk=pk)
@@ -96,35 +115,27 @@ class OvertimeRequestRejectView(APIView):
         ot.approved_by = request.user
         ot.approved_at = timezone.now()
         ot.save()
-        serializer = OvertimeRequestSerializer(ot)
-        return Response(serializer.data)
-
-
-class OvertimeRequestCancelView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, pk):
-        ot = get_object_or_404(OvertimeRequest, pk=pk)
-        if ot.status != OvertimeRequest.Status.APPROVED:
-            return Response({'error': 'Only approved requests can be cancelled.'}, status=400)
-        ot.status = OvertimeRequest.Status.CANCELLED
-        ot.save()
+        log_action(request.user, 'REJECT', 'OvertimeRequest', ot.id, f"Rejected overtime for {ot.employee.full_name}")
         serializer = OvertimeRequestSerializer(ot)
         return Response(serializer.data)
 
 
 class OvertimeConfigurationView(APIView):
-    permission_classes = [IsAuthenticated]
-
+    permission_classes = [IsAuthenticated]   
     def get(self, request):
         config = OvertimeConfiguration.load()
         serializer = OvertimeConfigurationSerializer(config)
         return Response(serializer.data)
 
     def put(self, request):
+        # Only HRAdmin can update overtime multipliers
+        self.permission_classes = [IsAuthenticated, IsHRAdmin]
+        self.check_permissions(request)
+
         config = OvertimeConfiguration.load()
         serializer = OvertimeConfigurationSerializer(config, data=request.data)
         if serializer.is_valid():
             serializer.save()
+            log_action(request.user, 'UPDATE', 'OvertimeConfiguration', config.pk, "Updated overtime multipliers")
             return Response(serializer.data)
         return Response(serializer.errors, status=400)

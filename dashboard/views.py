@@ -8,6 +8,7 @@ from attendance.models import AttendanceRecord
 from leave.models import LeaveRequest
 from payroll.models import PayPeriod, Payslip
 from recruitment.models import JobPosting, Candidate
+from holidays.models import Holiday
 
 
 class DashboardSummaryView(APIView):
@@ -156,10 +157,53 @@ class DashboardSummaryView(APIView):
             'average_score': round(float(avg_score), 1)
         }
 
+        # ---------- 6. Holidays ----------
+        today = date.today()
+
+        # Holidays today
+        today_holidays = [
+            {
+                'name': h.name,
+                'date': str(h.date),
+                'holiday_type': h.holiday_type,
+                'percentage': str(h.percentage),
+            }
+            for h in Holiday.objects.filter(date=today).order_by('name')
+        ]
+
+        # Upcoming holidays (strictly after today, within 30 days)
+        upcoming_holidays = [
+            {
+                'name': h.name,
+                'date': str(h.date),
+                'holiday_type': h.holiday_type,
+                'percentage': str(h.percentage),
+            }
+            for h in Holiday.objects.filter(
+                date__gt=today,
+                date__lte=today + timedelta(days=30)
+            ).order_by('date')
+        ]
+
+        total_holidays_this_month = Holiday.objects.filter(
+            date__year=today.year, date__month=today.month
+        ).count()
+
+        total_holidays_this_year = Holiday.objects.filter(
+            date__year=today.year
+        ).count()
+
+        holidays = {
+            'today': today_holidays,
+            'upcoming': upcoming_holidays,
+            'total_this_month': total_holidays_this_month,
+            'total_this_year': total_holidays_this_year,
+        }
         return Response({
             'employee_headcount': headcount,
             'attendance_overview': attendance_overview,
             'leave_summary': leave_summary,
             'payroll_totals': payroll_totals,
-            'recruitment_pipeline': recruitment
+            'recruitment_pipeline': recruitment,
+            'holidays': holidays, 
         })

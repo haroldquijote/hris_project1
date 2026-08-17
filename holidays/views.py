@@ -2,14 +2,14 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 
 from .models import Holiday
 from .serializers import HolidaySerializer
 
 
 class HolidayListCreateView(APIView):
-    permission_classes = [AllowAny]   # restrict later
+    permission_classes = [IsAuthenticated]   
 
     def get(self, request):
         """List all holidays (optional year filter)"""
@@ -30,7 +30,7 @@ class HolidayListCreateView(APIView):
 
 
 class HolidayDetailView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_object(self, pk):
         return get_object_or_404(Holiday, pk=pk)
@@ -59,7 +59,7 @@ class HolidayDetailView(APIView):
 
 class HolidayCheckView(APIView):
     """Payroll (or any service) checks if a given date is a holiday"""
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         date_str = request.query_params.get('date')
