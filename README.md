@@ -4,7 +4,7 @@ A comprehensive HRIS built with Django Rest Framework, covering employee managem
 Tech Stack
 Backend: Django, Django Rest Framework
 
-Database: SQLite (development), PostgreSQL recommended for production
+Database: PostgreSQL 
 
 Authentication: JWT (SimpleJWT)
 
