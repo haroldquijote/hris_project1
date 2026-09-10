@@ -37,6 +37,7 @@ class Profile(models.Model):
     can_delete_records = models.BooleanField(default=False)
     can_lock_payroll = models.BooleanField(default=False)
     can_manage_leave_adjustments = models.BooleanField(default=False)
+    can_import_attendance = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user.username} - {self.employee}"

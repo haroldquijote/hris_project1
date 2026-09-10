@@ -172,6 +172,17 @@ class EmployeeListView(APIView):
     """List all employees or create a new employee"""
     permission_classes = [IsAuthenticated]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    def post(self, request):
+        self.permission_classes = [IsAuthenticated, CanManageEmployees]
+        self.check_permissions(request)
+
+        serializer = EmployeeSerializer(data=request.data)
+        if serializer.is_valid():
+            employee = serializer.save()
+            log_action(request.user, 'CREATE', 'Employee', employee.id, f"Created employee {employee.company_id}")
+            return Response(EmployeeSerializer(employee).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def get(self, request):
         employees = Employee.objects.all()
@@ -206,19 +217,6 @@ class EmployeeListView(APIView):
         serializer = EmployeeListSerializer(paginated_employees, many=True)
         return paginator.get_paginated_response(serializer.data)
 
-class EmployeeListView(APIView):
-    permission_classes = [IsAuthenticated]   
-
-    def post(self, request):
-        self.permission_classes = [IsAuthenticated, CanManageEmployees]
-        self.check_permissions(request)
-
-        serializer = EmployeeSerializer(data=request.data)
-        if serializer.is_valid():
-            employee = serializer.save()
-            log_action(request.user, 'CREATE', 'Employee', employee.id, f"Created employee {employee.company_id}")
-            return Response(EmployeeSerializer(employee).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class EmployeeDetailView(APIView):
     """Get, update, or delete a single employee"""

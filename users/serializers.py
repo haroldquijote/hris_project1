@@ -30,7 +30,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
     can_delete_records = serializers.BooleanField(source='profile.can_delete_records', read_only=True)
     can_lock_payroll = serializers.BooleanField(source='profile.can_lock_payroll', read_only=True)
     can_manage_leave_adjustments = serializers.BooleanField(source='profile.can_manage_leave_adjustments', read_only=True)
-
+    can_import_attendance = serializers.BooleanField(source='profile.can_import_attendance', read_only=True)
     class Meta:
         model = User
         fields = [
@@ -38,7 +38,7 @@ class CurrentUserSerializer(serializers.ModelSerializer):
             'job_title', 'department',
             'role', 'must_change_password',
             'can_manage_leave', 'can_manage_overtime',
-            'can_manage_employees', 'can_delete_records', 'can_lock_payroll','can_manage_leave_adjustments',
+            'can_manage_employees', 'can_delete_records', 'can_lock_payroll','can_manage_leave_adjustments','can_import_attendance',
         ]
 
 
@@ -152,7 +152,7 @@ class AssistantListSerializer(serializers.ModelSerializer):
             'id', 'user_id', 'username', 'employee_name', 'full_name',
             'role', 'is_active', 'must_change_password',
             'can_manage_leave', 'can_manage_overtime',
-            'can_manage_employees', 'can_delete_records', 'can_lock_payroll','can_manage_leave_adjustments'
+            'can_manage_employees', 'can_delete_records', 'can_lock_payroll','can_manage_leave_adjustments','can_import_attendance',
         ]
 
     def get_full_name(self, obj):
@@ -166,7 +166,7 @@ class AssistantPermissionsSerializer(serializers.ModelSerializer):
         model = Profile
         fields = [
             'can_manage_leave', 'can_manage_overtime',
-            'can_manage_employees', 'can_delete_records', 'can_lock_payroll','can_manage_leave_adjustments',     
+            'can_manage_employees', 'can_delete_records', 'can_lock_payroll','can_manage_leave_adjustments','can_import_attendance',     
         ]
 
 class CreateAssistantSerializer(serializers.Serializer):

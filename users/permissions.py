@@ -54,4 +54,11 @@ class CanManageLeaveAdjustments(BasePermission):
         return (
             user.profile.role == 'HRADMIN'
             or user.profile.can_manage_leave_adjustments
-        )       
+        )      
+
+class CanImportAttendance(BasePermission):
+    message = "You do not have permission to import attendance."
+
+    def has_permission(self, request, view):
+        user = request.user
+        return user.profile.role == 'HRADMIN' or user.profile.can_import_attendance 

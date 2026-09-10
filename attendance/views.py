@@ -8,6 +8,10 @@ from rest_framework.permissions import IsAuthenticated
 from .models import AttendanceRecord, WorkSchedule
 from .serializers import AttendanceRecordSerializer, WorkScheduleSerializer
 from audit.utils import log_action  
+from rest_framework.parsers import MultiPartParser
+from users.permissions import CanImportAttendance
+from .utils.importer import import_attendance
+
 
 
 class StandardPagination(PageNumberPagination):
@@ -147,3 +151,48 @@ class WorkScheduleDetailView(APIView):
             {"message": "Work schedule deleted"},
             status=status.HTTP_204_NO_CONTENT
         )
+
+class AttendanceImportView(APIView):
+    permission_classes = [IsAuthenticated, CanImportAttendance]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        file = request.FILES.get('file')
+        if not file:
+            return Response(
+                {'error': 'No file provided. Use form field "file".'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not file.name.lower().endswith('.xlsx'):
+            return Response(
+                {'error': 'Only .xlsx files are accepted.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            summary = import_attendance(file)
+        except ValueError as exc:
+            return Response(
+                {'error': str(exc)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception:
+            logger.exception("Attendance import failed")
+            return Response(
+                {'error': 'Import failed. Check the file format.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        log_action(
+            request.user,
+            'CREATE',
+            'AttendanceImport',
+            0,
+            f"Imported attendance from {file.name}: "
+            f"{summary['created']} created, {summary['updated']} updated, "
+            f"{summary['skipped_not_found']} unknown IDs, "
+            f"{summary['skipped_errors']} errors."
+        )
+
+        return Response(summary, status=status.HTTP_200_OK)
