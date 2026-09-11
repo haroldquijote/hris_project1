@@ -3,6 +3,9 @@ from .models import AttendanceRecord,  WorkSchedule
 
 
 class AttendanceRecordSerializer(serializers.ModelSerializer):
+    def validate_remarks(self, value):
+        return value.strip() if value else value
+    
     employee_name = serializers.CharField(
         source='employee.full_name', read_only=True
     )

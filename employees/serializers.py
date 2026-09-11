@@ -9,6 +9,11 @@ from attendance.serializers import WorkScheduleSerializer
 
 class DepartmentSerializer(serializers.ModelSerializer):
     """Used to read / write department data. Also nested inside Employee response."""
+    def validate_name(self, value):
+        return value.strip() if value else value
+    def validate_description(self, value):
+        return value.strip() if value else value
+    
     class Meta:
         model = Department
         fields = ['id', 'name', 'description', 'created_at', 'updated_at']
@@ -21,6 +26,12 @@ class JobTitleSerializer(serializers.ModelSerializer):
     The `department_name` field shows the department's name without needing
     an extra query (dot‑notation is safe here because Department is always required).
     """
+    def validate_title(self, value):
+        return value.strip() if value else value
+
+    def validate_description(self, value):
+        return value.strip() if value else value
+    
     department_name = serializers.CharField(
         source='department.name',
         read_only=True
@@ -65,6 +76,50 @@ class EmployeeSerializer(serializers.ModelSerializer):
     marital_status_display = serializers.CharField(
         source='get_marital_status_display', read_only=True
     )
+
+    def validate_company_id(self, value):
+        # Trim only. Do not change case or remove characters.
+        return value.strip() if value else value
+
+    def validate_email(self, value):
+        # Trim and lowercase.
+        return value.strip().lower() if value else value
+
+    def validate_mobile_no(self, value):
+        # Remove spaces, dashes, and parentheses.
+        if not value:
+            return value
+        return value.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+
+    def validate_first_name(self, value):
+        return value.strip() if value else value
+
+    def validate_last_name(self, value):
+        return value.strip() if value else value
+
+    def validate_middle_name(self, value):
+        return value.strip() if value else value
+
+    def validate_mothers_maiden_name(self, value):
+        return value.strip() if value else value
+
+    def validate_tin(self, value):
+        return value.strip() if value else value
+
+    def validate_sss_gsis_no(self, value):
+        return value.strip() if value else value
+
+    def validate_hdmf(self, value):
+        return value.strip() if value else value
+
+    def validate_philhealth(self, value):
+        return value.strip() if value else value
+
+    def validate_drivers_license(self, value):
+        return value.strip() if value else value
+
+    def validate_passport(self, value):
+        return value.strip() if value else value
 
     class Meta:
         model = Employee
