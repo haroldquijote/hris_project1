@@ -325,12 +325,48 @@ def compute_phase2_gross_pay(employee, pay_period):
         current_day += timedelta(days=1)
 
     
-      # Basic pay = prorated monthly salary – total deductions
+    # Basic pay = fixed half-monthly amount for standard semi-monthly periods
     monthly_salary = Decimal(active_salary.base_salary)
-    prorated_basic = round((monthly_salary / Decimal(days_in_month)) * Decimal(days_in_period), 2)
+
+    # Detect whether this is a standard semi-monthly period
+    is_first_half = (
+        pay_period.start_date.day == 1
+        and pay_period.end_date.day == 15
+    )
+    is_second_half = (
+        pay_period.start_date.day == 16
+        and pay_period.end_date.day == days_in_month
+    )
+
+    if is_first_half or is_second_half:
+        # Monthly-paid employee: fixed half of monthly salary per payday
+        prorated_basic = round(monthly_salary / Decimal('2'), 2)
+    else:
+        # Non-standard period (e.g., a 1-day test period) → fall back to day proration
+        prorated_basic = round(
+            (monthly_salary / Decimal(days_in_month)) * Decimal(days_in_period), 2
+        )
+
+
     total_deductions = late_deduction_total + absent_deduction_total + undertime_deduction_total
     basic_pay = round(prorated_basic - total_deductions, 2)
     if basic_pay < 0:
+        basic_pay = Decimal('0.00')
+
+    # ---------------------------------------------------------------
+    # Edge case: full-period absence.
+    # If every working day in the period was absent (no attendance, no
+    # approved leave), the employee should earn ₱0 for the period. This
+    # prevents a small residual amount from appearing when the fixed
+    # half-monthly pay is slightly higher than the sum of daily-rate
+    # deductions.
+    # ---------------------------------------------------------------
+    working_days_in_period = sum(1 for d in daily_details if d['working_day'])
+    absent_days_in_period = sum(
+        1 for d in daily_details
+        if d['working_day'] and d['status'] == 'ABSENT'
+    )
+    if working_days_in_period > 0 and absent_days_in_period == working_days_in_period:
         basic_pay = Decimal('0.00')
 
     gross_pay = round(basic_pay + Decimal(allowances_total) + holiday_pay_total +
@@ -348,3 +384,18 @@ def compute_phase2_gross_pay(employee, pay_period):
         'gross_pay': gross_pay,
         'daily_details': daily_details,
     }
+
+def compute_net_pay(payslip):
+    """
+    Compute net pay with the negative clamp.
+    Used by both ComputeGrossPayView and PayslipAdjustmentListCreateView.
+    """
+    gov_total = (
+        payslip.sss_deduction
+        + payslip.philhealth_deduction
+        + payslip.pagibig_deduction
+        + payslip.tax_deduction
+    )
+    adj_total = sum(adj.amount for adj in payslip.adjustments.all())
+    net = payslip.gross_pay - gov_total + adj_total
+    return max(net, Decimal('0.00'))

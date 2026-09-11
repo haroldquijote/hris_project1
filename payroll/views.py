@@ -17,6 +17,7 @@ from .gov_deductions import compute_government_deductions
 from overtime.overtime_utils import compute_overtime_pay, get_overtime_for_day, determine_day_type
 from leave.utils import get_balance
 from users.permissions import CanLockPayroll
+from .utils import compute_net_pay
 
 # ---------- Pay Period CRUD ----------
 class PayPeriodListCreateView(APIView):
@@ -91,11 +92,22 @@ class ComputeGrossPayView(APIView):
             gross_pay = result['gross_pay'] + overtime_total
 
             # ───────────── 3. Government deductions (based on new gross) ─────────
-            if pay_period.period_type == PayPeriod.PeriodType.REGULAR:
+                        # ───────────── 3. Government deductions (based on new gross) ─────────
+            if gross_pay == 0:
+                # If the employee earned nothing this period, no government
+                # contributions or withholding tax are withheld. The employer
+                # will handle deferred contributions manually.
+                gov_deductions = {
+                    'sss': Decimal('0'),
+                    'philhealth': Decimal('0'),
+                    'pagibig': Decimal('0'),
+                    'tax': Decimal('0'),
+                }
+            elif pay_period.period_type == PayPeriod.PeriodType.REGULAR:
                 gov_deductions = compute_government_deductions(
                     employee, pay_period, gross_pay
                 )
-            else:
+            else:   # THIRTEENTH_MONTH or any other special type
                 gov_deductions = {
                     'sss': Decimal('0'),
                     'philhealth': Decimal('0'),
@@ -157,10 +169,7 @@ class ComputeGrossPayView(APIView):
             )
 
             # ───────────── 5. Recalculate net pay with adjustments ─────────
-            gov_total = (payslip.sss_deduction + payslip.philhealth_deduction +
-                         payslip.pagibig_deduction + payslip.tax_deduction)
-            adj_total = sum(adj.amount for adj in payslip.adjustments.all())
-            payslip.net_pay = payslip.gross_pay - gov_total + adj_total
+            payslip.net_pay = compute_net_pay(payslip)
             payslip.save()
 
             # ───────────── 6. Enrich daily details with overtime info ─────────────
@@ -262,9 +271,7 @@ class PayslipAdjustmentListCreateView(APIView):
             serializer.save()
             # Recalculate net pay for the payslip
             payslip.refresh_from_db()
-            gov_total = payslip.sss_deduction + payslip.philhealth_deduction + payslip.pagibig_deduction + payslip.tax_deduction
-            adj_total = sum(adj.amount for adj in payslip.adjustments.all())
-            payslip.net_pay = payslip.gross_pay - gov_total + adj_total  # adj_total is usually negative
+            payslip.net_pay = compute_net_pay(payslip)
             payslip.save()
             return Response(PayslipSerializer(payslip).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
