@@ -97,29 +97,41 @@ class PayslipSerializer(serializers.ModelSerializer):
         import calendar
         from decimal import Decimal
 
+        # If the payslip's total allowance was clamped to zero
+        # (e.g., full-period absence), the breakdown should be empty too.
+        if not obj.allowances_total or Decimal(obj.allowances_total) == 0:
+            return []
+
         allowances = EmployeeAllowance.objects.filter(
-        employee=obj.employee,
-        end_date__isnull=True
+            employee=obj.employee,
+            end_date__isnull=True
         )
         if not allowances or not obj.pay_period:
             return []
 
         pay_period = obj.pay_period
-        month = pay_period.start_date.month
         year = pay_period.start_date.year
+        month = pay_period.start_date.month
         days_in_month = calendar.monthrange(year, month)[1]
         days_in_period = (pay_period.end_date - pay_period.start_date).days + 1
 
-        breakdown = []
+        # Detect standard semi-monthly period (same rule as compute_phase2_gross_pay)
+        is_first_half = pay_period.start_date.day == 1 and pay_period.end_date.day == 15
+        is_second_half = pay_period.start_date.day == 16 and pay_period.end_date.day == days_in_month
+        is_standard = is_first_half or is_second_half
 
+        breakdown = []
         for a in allowances:
-          monthly_amount = Decimal(str(a.amount))
-          prorated = round((monthly_amount / days_in_month) * days_in_period, 2)
-          breakdown.append({
-            'allowance_type': a.allowance_type.name,
-            'monthly_amount': str(monthly_amount),
-            'prorated_amount': str(prorated)
-        })
+            monthly_amount = Decimal(str(a.amount))
+            if is_standard:
+                prorated = round(monthly_amount / 2, 2)
+            else:
+                prorated = round((monthly_amount / days_in_month) * days_in_period, 2)
+            breakdown.append({
+                'allowance_type': a.allowance_type.name,
+                'monthly_amount': str(monthly_amount),
+                'prorated_amount': str(prorated),
+            })
         return breakdown
     
     def get_period_type(self, obj):

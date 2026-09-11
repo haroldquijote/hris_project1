@@ -128,8 +128,26 @@ def compute_phase2_gross_pay(employee, pay_period):
     days_in_month = calendar.monthrange(year, month)[1]
     days_in_period = (pay_period.end_date - pay_period.start_date).days + 1
 
+    # Detect standard semi-monthly period (used for allowances and basic pay)
+    is_first_half = (
+        pay_period.start_date.day == 1
+        and pay_period.end_date.day == 15
+    )
+    is_second_half = (
+        pay_period.start_date.day == 16
+        and pay_period.end_date.day == days_in_month
+    )
+    is_standard_period = is_first_half or is_second_half
+
     # Prorated allowances for the period
-    allowances_total = round((total_monthly_allowance / days_in_month) * days_in_period, 2)
+    if is_standard_period:
+        # Fixed half of monthly allowance for standard semi-monthly periods
+        allowances_total = round(total_monthly_allowance / 2, 2)
+    else:
+        # Non-standard period → prorate by days
+        allowances_total = round(
+            (total_monthly_allowance / days_in_month) * days_in_period, 2
+        )
 
     # Annual daily rate (fixed for the whole year)
     daily_rate = get_annual_daily_rate(employee, year)
@@ -329,16 +347,7 @@ def compute_phase2_gross_pay(employee, pay_period):
     monthly_salary = Decimal(active_salary.base_salary)
 
     # Detect whether this is a standard semi-monthly period
-    is_first_half = (
-        pay_period.start_date.day == 1
-        and pay_period.end_date.day == 15
-    )
-    is_second_half = (
-        pay_period.start_date.day == 16
-        and pay_period.end_date.day == days_in_month
-    )
-
-    if is_first_half or is_second_half:
+    if is_standard_period:
         # Monthly-paid employee: fixed half of monthly salary per payday
         prorated_basic = round(monthly_salary / Decimal('2'), 2)
     else:
@@ -368,6 +377,7 @@ def compute_phase2_gross_pay(employee, pay_period):
     )
     if working_days_in_period > 0 and absent_days_in_period == working_days_in_period:
         basic_pay = Decimal('0.00')
+        allowances_total = Decimal('0.00') 
 
     gross_pay = round(basic_pay + Decimal(allowances_total) + holiday_pay_total +
                       rest_day_premium_total + nsd_total, 2)
