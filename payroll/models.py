@@ -125,6 +125,7 @@ class PayslipDailyDetail(models.Model):
         ABSENT = 'ABSENT', 'Absent'
         HOLIDAY = 'HOLIDAY', 'Holiday'
         REST_DAY = 'REST_DAY', 'Rest Day'
+        PAID_LEAVE = 'PAID_LEAVE', 'Paid Leave'
 
     payslip = models.ForeignKey(
         Payslip,

@@ -201,6 +201,7 @@ def compute_phase2_gross_pay(employee, pay_period):
         holiday = Holiday.objects.filter(date=current_day).first()
 
 # ---------- Approved (unpaid) leave ----------
+        # ---------- Approved leave ----------
         approved_leave = LeaveRequest.objects.filter(
             employee=employee,
             status='APPROVED',
@@ -209,12 +210,22 @@ def compute_phase2_gross_pay(employee, pay_period):
         ).select_related('leave_type').first()
 
         if approved_leave:
-            deduction = round(daily_rate, 2)
-            detail['status'] = 'ABSENT'
-            detail['absent_deduction'] = deduction
+            payment_status = approved_leave.leave_type.payment_status
             detail['leave_type_name'] = approved_leave.leave_type.name
-            detail['remarks'] = f'On leave: {approved_leave.leave_type.name}'
-            absent_deduction_total += deduction
+
+            if payment_status in ('PAID', 'GOVERNMENT'):
+                # Paid leave → no deduction, full pay for the day
+                detail['status'] = 'PAID_LEAVE'
+                detail['absent_deduction'] = Decimal('0.00')
+                detail['remarks'] = f'Paid leave: {approved_leave.leave_type.name}'
+            else:
+                # Unpaid leave → deduct like an absence
+                deduction = round(daily_rate, 2)
+                detail['status'] = 'ABSENT'
+                detail['absent_deduction'] = deduction
+                detail['remarks'] = f'On leave: {approved_leave.leave_type.name}'
+                absent_deduction_total += deduction
+
             daily_details.append(detail)
             current_day += timedelta(days=1)
             continue

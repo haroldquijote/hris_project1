@@ -19,11 +19,22 @@ class LeaveConfiguration(models.Model):
 
 
 class LeaveType(models.Model):
+    class PaymentStatus(models.TextChoices):
+        PAID = 'PAID', 'Paid by Company'
+        GOVERNMENT = 'GOVERNMENT', 'Paid via Government (SSS/Employer)'
+        UNPAID = 'UNPAID', 'Unpaid'
+
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     counts_towards_balance = models.BooleanField(
         default=True,
         help_text="If True, approved leaves of this type deduct from the annual pool."
+    )
+    payment_status = models.CharField(
+        max_length=20,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.UNPAID,
+        help_text="Whether this leave is paid (company or government) or unpaid."
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
