@@ -11,8 +11,9 @@ from audit.utils import log_action
 from rest_framework.parsers import MultiPartParser
 from users.permissions import CanImportAttendance
 from .utils.importer import import_attendance
+import logging
 
-
+logger = logging.getLogger(__name__)
 
 class StandardPagination(PageNumberPagination):
     page_size = 20
