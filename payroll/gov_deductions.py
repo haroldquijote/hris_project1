@@ -1,17 +1,9 @@
 from decimal import Decimal
-from .models import SSSContribution, PhilHealthContribution, PagIBIGContribution
+from .models import (
+    SSSContribution, PhilHealthContribution,
+    PagIBIGContribution, WithholdingTaxTable
+)
 from employees.models import EmployeeSalary
-
-
-# Monthly withholding tax table (2026, S/0)
-MONTHLY_TAX_BRACKETS = [
-    (0, 20833, 0, 0, 0),
-    (20833, 33332, 0, 0.15, 20833),
-    (33333, 66666, 1875, 0.20, 33333),
-    (66667, 166666, 8541.80, 0.25, 66667),
-    (166667, 666666, 33541.80, 0.30, 166667),
-    (666667, 99999999, 183541.80, 0.35, 666667),
-]
 
 
 def compute_government_deductions(employee, pay_period, gross_pay):
@@ -21,6 +13,7 @@ def compute_government_deductions(employee, pay_period, gross_pay):
         - 1st half (1-15): Pag-IBIG + PhilHealth only
         - 2nd half (16-EOM): SSS + Tax only
     """
+    # 1. Monthly equivalent salary
     active_salary = EmployeeSalary.objects.filter(
         employee=employee, end_date__isnull=True
     ).first()
@@ -30,7 +23,7 @@ def compute_government_deductions(employee, pay_period, gross_pay):
 
     monthly_salary = Decimal(active_salary.base_salary)
 
-    # ---------- Full monthly contributions ----------
+    # ---------- Compute monthly contributions (full) ----------
     # SSS
     sss_row = SSSContribution.objects.filter(
         salary_from__lte=monthly_salary, salary_to__gte=monthly_salary
@@ -63,23 +56,25 @@ def compute_government_deductions(employee, pay_period, gross_pay):
     else:
         pagibig_monthly = Decimal('0')
 
-    # Withholding Tax (monthly table)
-    monthly_gross = gross_pay * 2   # approximate
+    # ---------- Withholding Tax (monthly table, filtered by tax status) ----------
+    monthly_gross = gross_pay * 2   # approximate (semi-monthly gross -> monthly)
     taxable_income = monthly_gross - sss_monthly - phil_monthly - pagibig_monthly
     if taxable_income < 0:
         taxable_income = Decimal('0')
 
     tax_monthly = Decimal('0')
-    for bracket in MONTHLY_TAX_BRACKETS:
-        from_amount, to_amount, base, rate, exempt = bracket
-        if taxable_income >= from_amount and taxable_income <= to_amount:
-            base = Decimal(base)
-            rate = Decimal(rate)
-            exempt = Decimal(exempt)
-            tax_monthly = base + (taxable_income - exempt) * rate
-            if tax_monthly < 0:
-                tax_monthly = Decimal('0')
-            break
+    tax_row = WithholdingTaxTable.objects.filter(
+        tax_status=employee.tax_status,
+        compensation_from__lte=taxable_income,
+        compensation_to__gte=taxable_income,
+    ).first()
+    if tax_row:
+        base = Decimal(tax_row.base_tax)
+        rate = Decimal(tax_row.rate_above)
+        exempt = Decimal(tax_row.exemption_amount)
+        tax_monthly = base + (taxable_income - exempt) * rate
+        if tax_monthly < 0:
+            tax_monthly = Decimal('0')
 
     # ---------- Assign deductions based on pay period ----------
     is_first_half = pay_period.start_date.day == 1

@@ -1,8 +1,10 @@
+from decimal import Decimal
 from django.core.management.base import BaseCommand
 from payroll.models import (
     SSSContribution, PhilHealthContribution,
-    PagIBIGContribution, WithholdingTaxTable
+    PagIBIGContribution, WithholdingTaxTable,
 )
+
 
 class Command(BaseCommand):
     help = 'Seed the government contribution tables with 2026 official rates'
@@ -14,92 +16,115 @@ class Command(BaseCommand):
         PagIBIGContribution.objects.all().delete()
         WithholdingTaxTable.objects.all().delete()
 
-        # ----------------------------------------------------------------------
-        # SSS Contribution Table (2026)
-        # MSC ₱5,000–₱35,000 in ₱500 steps, employee share = 5% of MSC
-        # ----------------------------------------------------------------------
-        sss_data = []
-        # Generate MSC from 5000 to 35000, step 500.
-        # Each bracket: salary_from = msc - 250 (if possible), salary_to = msc + 249.99
-        # For simplicity, we use the exact MSC value as the basis,
-        # but the practical lookup will be: round salary to nearest 500, clip to 5k-35k.
-        # We'll store one row per MSC with a salary range that covers that MSC.
+        # ------------------------------------------------------------------
+        # SSS Contribution Table (2026) — unchanged
+        # ------------------------------------------------------------------
         for msc in range(5000, 35500, 500):
             lower = msc - 250 if msc > 5000 else 0
             upper = msc + 249.99
             employee_share = msc * 0.05
-            sss_data.append((lower, upper, msc, employee_share))
-
-        for row in sss_data:
             SSSContribution.objects.create(
-                salary_from=row[0],
-                salary_to=row[1],
-                monthly_salary_credit=row[2],
-                employee_share=row[3]
+                salary_from=lower,
+                salary_to=upper,
+                monthly_salary_credit=msc,
+                employee_share=employee_share,
             )
 
-        # ----------------------------------------------------------------------
-        # PhilHealth Contribution Table (2026)
-        # 5% total, 2.5% employee share, floor ₱10,000, ceiling ₱100,000
-        # ----------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # PhilHealth Contribution Table (2026) — unchanged
+        # ------------------------------------------------------------------
         PhilHealthContribution.objects.create(
-            salary_from=0,
-            salary_to=10000.00,
-            premium_rate=0.05,
-            employee_share_rate=0.025
+            salary_from=0, salary_to=10000.00,
+            premium_rate=0.05, employee_share_rate=0.025,
         )
         PhilHealthContribution.objects.create(
-            salary_from=10000.01,
-            salary_to=100000.00,
-            premium_rate=0.05,
-            employee_share_rate=0.025
+            salary_from=10000.01, salary_to=100000.00,
+            premium_rate=0.05, employee_share_rate=0.025,
         )
         PhilHealthContribution.objects.create(
-            salary_from=100000.01,
-            salary_to=999999.99,
-            premium_rate=0.05,
-            employee_share_rate=0.025
+            salary_from=100000.01, salary_to=999999.99,
+            premium_rate=0.05, employee_share_rate=0.025,
         )
 
-        # ----------------------------------------------------------------------
-        # Pag-IBIG Contribution Table (2026)
-        # Employee share: 1% if salary ≤ ₱1,500, else 2%, capped at ₱200.
-        # Base salary for contribution capped at ₱10,000.
-        # ----------------------------------------------------------------------
+        # ------------------------------------------------------------------
+        # Pag-IBIG Contribution Table (2026) — unchanged
+        # ------------------------------------------------------------------
         PagIBIGContribution.objects.create(
-            salary_from=0,
-            salary_to=1500.00,
-            employee_share=0.01   # 1% (but actual amount will be calculated)
+            salary_from=0, salary_to=1500.00, employee_share=0.01,
         )
         PagIBIGContribution.objects.create(
-            salary_from=1500.01,
-            salary_to=10000.00,
-            employee_share=0.02   # 2%
+            salary_from=1500.01, salary_to=10000.00, employee_share=0.02,
         )
         PagIBIGContribution.objects.create(
-            salary_from=10000.01,
-            salary_to=999999.99,
-            employee_share=200.00  # max ₱200
+            salary_from=10000.01, salary_to=999999.99, employee_share=200.00,
         )
 
-        # ----------------------------------------------------------------------
-        # Withholding Tax Table (Semi‑Monthly, S/0)
-        # ----------------------------------------------------------------------
-        tax_data = [
-            (0, 10417, 0, 0, 0),
-            (10417, 16666, 0, 0.15, 10417),
-            (16667, 33332, 937.50, 0.20, 16667),
-            (33333, 83332, 4270.70, 0.25, 33333),
-            (83333, 333332, 16770.70, 0.30, 83333),
-            (333333, 9999999, 91770.70, 0.35, 333333),
+        # ------------------------------------------------------------------
+        # Withholding Tax Table — Semi-Monthly (2026)
+        #
+        # S/0 uses the exact BIR-published base taxes.
+        # The other 9 statuses are derived mathematically (exemption changes,
+        # rate structure identical). For full compliance, replace their
+        # base taxes with the official BIR values from RR 11-2018 Annex E.
+        # ------------------------------------------------------------------
+
+        # Bracket boundaries and rates (shared across all statuses)
+        brackets = [
+            (0,         20833,     0.15),
+            (20833,     33332,     0.20),
+            (33333,     66666,     0.25),
+            (66667,     166666,    0.30),
+            (166667,    666666,    0.35),
+            (666667,    99999999,  0.35),
         ]
-        for row in tax_data:
-            WithholdingTaxTable.objects.create(
-                compensation_from=row[0],
-                compensation_to=row[1],
-                base_tax=row[2],
-                rate_above=row[3],
-                exemption_amount=row[4]
-            )
+
+        # Official BIR MONTHLY base taxes for S/0
+        s0_base_taxes = [
+            0,
+            0,
+            Decimal('1875.00'),
+            Decimal('8541.80'),
+            Decimal('33541.80'),
+            Decimal('183541.80'),
+        ]
+
+        # Exemption thresholds per status (MONTHLY)
+        tax_statuses = {
+            'S/0':  Decimal('20833'),
+            'S/1':  Decimal('29167'),
+            'S/2':  Decimal('37500'),
+            'S/3':  Decimal('45833'),
+            'S/4':  Decimal('54167'),
+            'ME/0': Decimal('29167'),
+            'ME/1': Decimal('37500'),
+            'ME/2': Decimal('45833'),
+            'ME/3': Decimal('54167'),
+            'ME/4': Decimal('62500'),
+        }
+
+        def compute_base_taxes(exemption):
+            rows = []
+            cumulative = Decimal('0')
+            for from_, to_, rate in brackets:
+                rows.append(cumulative)
+                taxable = max(Decimal('0'), Decimal(to_) - max(Decimal(from_), exemption))
+                cumulative += taxable * Decimal(str(rate))
+            return rows
+
+        for status, exemption in tax_statuses.items():
+            if status == 'S/0':
+                base_taxes = s0_base_taxes
+            else:
+                base_taxes = compute_base_taxes(exemption)
+
+            for (from_, to_, rate), base in zip(brackets, base_taxes):
+                WithholdingTaxTable.objects.create(
+                    tax_status=status,
+                    compensation_from=from_,
+                    compensation_to=to_,
+                    base_tax=round(Decimal(str(base)), 2),
+                    rate_above=Decimal(str(rate)),
+                    exemption_amount=exemption,
+                )
 
         self.stdout.write(self.style.SUCCESS('Government tables seeded successfully.'))

@@ -226,7 +226,7 @@ class PagIBIGContribution(models.Model):
 
 
 class WithholdingTaxTable(models.Model):
-    """BIR graduated withholding tax table (semi‑monthly, S/0)."""
+    tax_status = models.CharField(max_length=10, default='S/0')
     compensation_from = models.DecimalField(max_digits=10, decimal_places=2)
     compensation_to = models.DecimalField(max_digits=10, decimal_places=2)
     base_tax = models.DecimalField(max_digits=10, decimal_places=2)

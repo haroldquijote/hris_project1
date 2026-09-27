@@ -36,7 +36,6 @@ class JobTitle(models.Model):
 
 
 
-
 class Employee(models.Model):
     """Employee master record with personal, employment, and government IDs."""
 
@@ -60,6 +59,22 @@ class Employee(models.Model):
         ("D", "Divorced"),
     ]
 
+    # ---------------------------------------------------------------
+    # NEW: BIR tax status for withholding tax computation
+    # ---------------------------------------------------------------
+    TAX_STATUS_CHOICES = [
+        ("S/0",  "Single, 0 dependents"),
+        ("S/1",  "Single, 1 dependent"),
+        ("S/2",  "Single, 2 dependents"),
+        ("S/3",  "Single, 3 dependents"),
+        ("S/4",  "Single, 4 dependents"),
+        ("ME/0", "Married, 0 dependents"),
+        ("ME/1", "Married, 1 dependent"),
+        ("ME/2", "Married, 2 dependents"),
+        ("ME/3", "Married, 3 dependents"),
+        ("ME/4", "Married, 4 dependents"),
+    ]
+
     # Identity & employment
     company_id = models.CharField(max_length=50, unique=True)
     department = models.ForeignKey(
@@ -77,6 +92,18 @@ class Employee(models.Model):
         choices=EMPLOYMENT_STATUS,
         default="PROBATIONARY",
     )
+
+    # ---------------------------------------------------------------
+    # NEW field — placed here, right after employment status, because
+    # it belongs with the other employment/tax metadata.
+    # ---------------------------------------------------------------
+    tax_status = models.CharField(
+        max_length=10,
+        choices=TAX_STATUS_CHOICES,
+        default="S/0",
+        help_text="BIR tax status for withholding tax computation."
+    )
+
     date_hired = models.DateField()
     date_of_resignation = models.DateField(null=True, blank=True)
 
@@ -123,10 +150,6 @@ class Employee(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # -----------------------------------------------------------------
-    # CRITICAL FIX: The salary serializer references employee.full_name.
-    # This property provides that attribute safely.
-    # -----------------------------------------------------------------
     @property
     def full_name(self):
         """Returns the employee's full name in 'First Last' format."""
