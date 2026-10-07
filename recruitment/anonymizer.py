@@ -4,7 +4,7 @@ from presidio_analyzer.nlp_engine import SpacyNlpEngine
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 
-SPACY_MODEL = "en_core_web_lg"
+SPACY_MODEL = "en_core_web_md"
 
 _analyzer = None
 _anonymizer = None
