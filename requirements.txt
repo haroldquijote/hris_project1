@@ -98,3 +98,5 @@ webencodings==0.5.1
 wrapt==2.3.0
 zopfli==0.4.3
 en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl
+gunicorn==21.2.0
+dj-database-url==2.1.0
