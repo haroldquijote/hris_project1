@@ -17,6 +17,7 @@ from overtime.overtime_utils import compute_overtime_pay, get_overtime_for_day, 
 from leave.utils import get_balance
 from users.permissions import CanLockPayroll
 from .utils import compute_net_pay
+import base64
 
 # ---------- Pay Period CRUD ----------
 class PayPeriodListCreateView(APIView):
@@ -281,16 +282,21 @@ class CompanySettingsView(APIView):
 
     def get(self, request):
         settings = CompanySettings.load()
+        logo = None
+        if settings.logo_data and settings.logo_content_type:
+            logo = f"data:{settings.logo_content_type};base64,{settings.logo_data}"
         return Response({
             'company_name': settings.company_name,
-            'logo_url': request.build_absolute_uri(settings.logo.url) if settings.logo else None,
+            'logo': logo,
         })
 
     def put(self, request):
         settings = CompanySettings.load()
         settings.company_name = request.data.get('company_name', settings.company_name)
         if 'logo' in request.FILES:
-            settings.logo = request.FILES['logo']
+            logo_file = request.FILES['logo']
+            settings.logo_data = base64.b64encode(logo_file.read()).decode('utf-8')
+            settings.logo_content_type = logo_file.content_type
         settings.save()
         return Response({'message': 'Company settings updated'})
 

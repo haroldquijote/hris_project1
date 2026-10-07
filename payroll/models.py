@@ -242,10 +242,11 @@ class WithholdingTaxTable(models.Model):
 
 class CompanySettings(models.Model):
     company_name = models.CharField(max_length=200, default="PHILIPPINE HOME PHARMACEUTICAL")
-    logo = models.ImageField(upload_to='company/', blank=True, null=True)
+    logo_data = models.TextField(blank=True, null=True)
+    logo_content_type = models.CharField(max_length=50, blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        self.pk = 1   # force a single record
+        self.pk = 1
         super().save(*args, **kwargs)
 
     @classmethod

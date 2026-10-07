@@ -131,10 +131,10 @@ class Command(BaseCommand):
             return rows
 
         for status, exemption in tax_statuses.items():
-            if status == 'S/0':
-                base_taxes = s0_base_taxes
-            else:
-                base_taxes = compute_base_taxes(exemption)
+            # Post-TRAIN (RA 10963): personal exemption is uniform at ₱250,000/year.
+            # BIR no longer publishes per-status tables, so all statuses use the
+            # same S/0 base taxes.
+            base_taxes = s0_base_taxes
 
             for (from_, to_, rate), base in zip(brackets, base_taxes):
                 WithholdingTaxTable.objects.create(
