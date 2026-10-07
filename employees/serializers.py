@@ -76,6 +76,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
     marital_status_display = serializers.CharField(
         source='get_marital_status_display', read_only=True
     )
+    tax_status_display = serializers.CharField(
+        source='get_tax_status_display', read_only=True
+    )
 
     def validate_company_id(self, value):
         # Trim only. Do not change case or remove characters.
@@ -164,6 +167,8 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'sss_gsis_no',
             'hdmf',
             'philhealth',
+            'tax_status',
+            'tax_status_display',
             'drivers_license',
             'passport',
             # Metadata
