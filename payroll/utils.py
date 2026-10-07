@@ -234,7 +234,7 @@ def compute_phase2_gross_pay(employee, pay_period):
         # ---------- Absent ----------
         if not attendance or attendance.status == 'ABSENT':
             # If it's a rest day and no attendance record, it's a normal rest day
-            if not working_day and not attendance:
+            if not working_day:
                 detail['status'] = 'REST_DAY'
                 daily_details.append(detail)
                 current_day += timedelta(days=1)

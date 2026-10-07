@@ -3,9 +3,9 @@ from datetime import date
 from .models import (
     LeaveType, LeaveGrant, LeaveRequest, LeaveAdjustment, LeaveConfiguration
 )
-from .utils import get_balance, get_used_days   # we'll create this next
+from .utils import get_balance, get_used_days   
 from employees.models import Employee
-
+from payroll.serializers import _user_display_name
 
 class LeaveTypeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -39,6 +39,7 @@ class LeaveAdjustmentSerializer(serializers.ModelSerializer):
 class LeaveRequestSerializer(serializers.ModelSerializer):
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
     leave_type_name = serializers.CharField(source='leave_type.name', read_only=True)
+    reviewed_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = LeaveRequest
@@ -46,9 +47,9 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
             'id', 'employee', 'employee_name',
             'leave_type', 'leave_type_name', 'custom_leave_type',
             'start_date', 'end_date', 'reason', 'status',
-            'reviewed_by', 'reviewed_at', 'created_at', 'updated_at',
+            'reviewed_by', 'reviewed_by_name',  'reviewed_at', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'reviewed_by', 'reviewed_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'reviewed_by',  'reviewed_by_name', 'reviewed_at']
 
     def validate(self, data):
         # Basic date validation
@@ -59,6 +60,8 @@ class LeaveRequestSerializer(serializers.ModelSerializer):
         # For updates: status transitions handled in views.
         return data
 
+    def get_reviewed_by_name(self, obj):
+        return _user_display_name(obj.reviewed_by)
 
 class LeaveRequestApproveSerializer(serializers.Serializer):
     """Used only for approving a request (no other fields)."""

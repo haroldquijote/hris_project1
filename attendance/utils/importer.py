@@ -116,7 +116,9 @@ def _compute_status(employee, record_date, clock_in):
     expected = timezone.make_aware(expected, timezone.get_current_timezone())
 
     diff_minutes = (clock_in - expected).total_seconds() / 60
+    
     if diff_minutes > grace:
+       
         return AttendanceRecord.Status.LATE
     return AttendanceRecord.Status.PRESENT
 

@@ -1,11 +1,21 @@
-from django.test import TestCase
+from django.contrib.auth import get_user_model
 from django.urls import reverse
+from rest_framework.test import APITestCase
+from users.models import Profile
 
 from .models import Department, Employee, JobTitle
 
 
-class EmployeeCRUDTests(TestCase):
+class EmployeeCRUDTests(APITestCase):
     def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="admin", password="pass12345")
+        profile, _ = Profile.objects.get_or_create(user=self.user)
+        profile.role = "HRADMIN"
+        profile.can_manage_employees = True
+        profile.save()
+        self.client.force_authenticate(user=self.user)
+
         self.department = Department.objects.create(name="Engineering")
         self.job_title = JobTitle.objects.create(title="Software Engineer", department=self.department)
 
@@ -16,7 +26,7 @@ class EmployeeCRUDTests(TestCase):
             "job_title": self.job_title.pk,
             "employment_status": "REGULAR",
             "date_hired": "2025-01-01",
-            "date_of_resignation": "",
+            "date_of_resignation": None,
             "last_name": "Doe",
             "first_name": "Jane",
             "middle_name": "A",
@@ -49,7 +59,7 @@ class EmployeeCRUDTests(TestCase):
             job_title=self.job_title,
             employment_status=payload["employment_status"],
             date_hired=payload["date_hired"],
-            date_of_resignation=payload["date_of_resignation"] or None,
+            date_of_resignation=payload["date_of_resignation"],
             last_name=payload["last_name"],
             first_name=payload["first_name"],
             middle_name=payload["middle_name"],
@@ -72,48 +82,59 @@ class EmployeeCRUDTests(TestCase):
             passport=payload["passport"],
         )
 
-    def test_employee_list_page_loads(self):
+    def test_employee_list_loads(self):
         self.create_employee()
-        response = self.client.get(reverse("employee_list"))
+        response = self.client.get(reverse("employee-list"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Doe, Jane")
+        # works whether or not pagination is on
+        results = response.data["results"] if isinstance(response.data, dict) else response.data
+        self.assertIn("EMP-001", [row["company_id"] for row in results])
 
     def test_create_employee(self):
-        response = self.client.post(reverse("employee_create"), data=self.employee_payload())
+        response = self.client.post(reverse("employee-list"), self.employee_payload(), format="json")
 
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 201, response.data)
         self.assertTrue(Employee.objects.filter(company_id="EMP-001").exists())
 
-    def test_create_employee_invalid_form(self):
+    def test_create_employee_invalid(self):
         invalid = self.employee_payload(email="")
-        response = self.client.post(reverse("employee_create"), data=invalid)
+        response = self.client.post(reverse("employee-list"), invalid, format="json")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "This field is required")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("email", response.data)
+        self.assertFalse(Employee.objects.filter(company_id="EMP-001").exists())
 
     def test_update_employee(self):
         employee = self.create_employee()
         updated = self.employee_payload(last_name="Smith", company_id="EMP-002", email="smith@example.com")
 
-        response = self.client.post(reverse("employee_update", args=[employee.pk]), data=updated)
+        response = self.client.put(
+            reverse("employee-detail", args=[employee.pk]), updated, format="json"
+        )
         employee.refresh_from_db()
 
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(employee.last_name, "Smith")
         self.assertEqual(employee.company_id, "EMP-002")
 
     def test_delete_employee(self):
         employee = self.create_employee()
 
-        response = self.client.post(reverse("employee_delete", args=[employee.pk]))
+        response = self.client.delete(reverse("employee-detail", args=[employee.pk]))
 
-        self.assertEqual(response.status_code, 302)
+        self.assertIn(response.status_code, (200, 204))
         self.assertFalse(Employee.objects.filter(pk=employee.pk).exists())
 
-    def test_employee_detail_page_loads(self):
+    def test_employee_detail_loads(self):
         employee = self.create_employee()
-        response = self.client.get(reverse("employee_detail", args=[employee.pk]))
+        response = self.client.get(reverse("employee-detail", args=[employee.pk]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Doe, Jane")
+        self.assertEqual(response.data["company_id"], "EMP-001")
+
+    def test_unauthenticated_request_rejected(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.get(reverse("employee-list"))
+
+        self.assertIn(response.status_code, (401, 403))

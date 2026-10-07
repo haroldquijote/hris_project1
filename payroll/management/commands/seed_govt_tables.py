@@ -1,5 +1,6 @@
 from decimal import Decimal
 from django.core.management.base import BaseCommand
+from django.db import transaction
 from payroll.models import (
     SSSContribution, PhilHealthContribution,
     PagIBIGContribution, WithholdingTaxTable,
@@ -9,6 +10,7 @@ from payroll.models import (
 class Command(BaseCommand):
     help = 'Seed the government contribution tables with 2026 official rates'
 
+    @transaction.atomic
     def handle(self, *args, **options):
         # Clear old data
         SSSContribution.objects.all().delete()
@@ -30,6 +32,15 @@ class Command(BaseCommand):
                 employee_share=employee_share,
             )
 
+        # Catch-all for salaries above the official MSC ceiling (RA 11199).
+        # Assigns MSC 35,000 (legal max) → employee share ₱1,750.00.
+        SSSContribution.objects.create(
+            salary_from=Decimal('35250.00'),
+            salary_to=Decimal('99999999.99'),
+            monthly_salary_credit=Decimal('35000.00'),
+            employee_share=Decimal('1750.00'),
+        )
+
         # ------------------------------------------------------------------
         # PhilHealth Contribution Table (2026) — unchanged
         # ------------------------------------------------------------------
@@ -45,6 +56,10 @@ class Command(BaseCommand):
             salary_from=100000.01, salary_to=999999.99,
             premium_rate=0.05, employee_share_rate=0.025,
         )
+        PhilHealthContribution.objects.create(
+            salary_from=Decimal('1000000.00'), salary_to=Decimal('99999999.99'),
+            premium_rate=0.05, employee_share_rate=0.025,
+        )
 
         # ------------------------------------------------------------------
         # Pag-IBIG Contribution Table (2026) — unchanged
@@ -58,6 +73,10 @@ class Command(BaseCommand):
         PagIBIGContribution.objects.create(
             salary_from=10000.01, salary_to=999999.99, employee_share=200.00,
         )
+        PagIBIGContribution.objects.create(
+            salary_from=Decimal('1000000.00'), salary_to=Decimal('99999999.99'),
+            employee_share=200.00,
+        )
 
         # ------------------------------------------------------------------
         # Withholding Tax Table — Semi-Monthly (2026)
@@ -70,11 +89,11 @@ class Command(BaseCommand):
 
         # Bracket boundaries and rates (shared across all statuses)
         brackets = [
-            (0,         20833,     0.15),
-            (20833,     33332,     0.20),
-            (33333,     66666,     0.25),
-            (66667,     166666,    0.30),
-            (166667,    666666,    0.35),
+            (0,         20833,     0.00),
+            (20833,     33332,     0.15),
+            (33333,     66666,     0.20),
+            (66667,     166666,    0.25),
+            (166667,    666666,    0.30),
             (666667,    99999999,  0.35),
         ]
 

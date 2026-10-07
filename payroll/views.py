@@ -8,11 +8,10 @@ from django.utils import timezone
 import csv
 from django.http import HttpResponse
 from audit.utils import log_action
-from .models import PayPeriod, Payslip, PayslipDailyDetail, PayslipAdjustment, CompanySettings, SSSContribution, PhilHealthContribution, PagIBIGContribution
+from .models import PayPeriod, Payslip, PayslipDailyDetail, PayslipAdjustment, CompanySettings, SSSContribution, PhilHealthContribution, PagIBIGContribution, WithholdingTaxTable
 from .serializers import PayPeriodSerializer, PayslipSerializer, PayslipDailyDetailSerializer, PayslipAdjustmentSerializer
 from .utils import compute_phase2_gross_pay
 from employees.models import Employee, EmployeeSalary
-from .utils import compute_phase2_gross_pay 
 from .gov_deductions import compute_government_deductions
 from overtime.overtime_utils import compute_overtime_pay, get_overtime_for_day, determine_day_type
 from leave.utils import get_balance
@@ -227,15 +226,16 @@ class ComputeGrossPayView(APIView):
 # ---------- Payslip List / Detail ----------
 class PayslipListView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
         period_id = request.query_params.get('pay_period')
         if period_id:
-            payslips = Payslip.objects.filter(pay_period_id=period_id)
+            payslips = Payslip.objects.select_related('pay_period').filter(pay_period_id=period_id)
         else:
-            payslips = Payslip.objects.all()
-        serializer = PayslipSerializer(payslips, many=True) 
+            payslips = Payslip.objects.select_related('pay_period').all()
+        serializer = PayslipSerializer(payslips, many=True)
         return Response(serializer.data)
-
+    
 class PayslipDetailView(APIView):
     permission_classes = [IsAuthenticated]
     def get_object(self, pk):
@@ -795,15 +795,6 @@ class BIRRemittanceCSVView(APIView):
 
         totals = {'gross': Decimal('0.00'), 'taxable': Decimal('0.00'), 'tax': Decimal('0.00')}
 
-        # Monthly tax brackets (2026, S/0)
-        MONTHLY_TAX_BRACKETS = [
-            (0, 20833, 0, 0, 0),
-            (20833, 33332, 0, 0.15, 20833),
-            (33333, 66666, 1875, 0.20, 33333),
-            (66667, 166666, 8541.80, 0.25, 66667),
-            (166667, 666666, 33541.80, 0.30, 166667),
-            (666667, 99999999, 183541.80, 0.35, 666667),
-        ]
 
         for payslip in payslips:
             employee = payslip.employee
@@ -852,20 +843,23 @@ class BIRRemittanceCSVView(APIView):
 
             # Compute monthly withholding tax
             tax_monthly = Decimal('0.00')
-            for bracket in MONTHLY_TAX_BRACKETS:
-                from_amount, to_amount, base, rate, exempt = bracket
-                if taxable_income >= from_amount and taxable_income <= to_amount:
-                    tax_monthly = Decimal(base) + (taxable_income - Decimal(exempt)) * Decimal(rate)
-                    if tax_monthly < 0:
-                        tax_monthly = Decimal('0.00')
-                    break
+            tax_row = WithholdingTaxTable.objects.filter(
+            tax_status=employee.tax_status,
+            compensation_from__lte=taxable_income,
+            compensation_to__gte=taxable_income,
+            ).first()
+
+            if tax_row:
+                tax_monthly = tax_row.base_tax + (taxable_income - tax_row.compensation_from) * tax_row.rate_above
+                if tax_monthly < 0:
+                    tax_monthly = Decimal('0.00')
 
             writer.writerow([
                 employee.full_name,
                 employee.tin or '',
-                monthly_gross,
-                taxable_income,
-                tax_monthly,
+                f"{monthly_gross:.2f}",
+                f"{taxable_income:.2f}",
+                f"{tax_monthly:.2f}",
             ])
 
             totals['gross'] += monthly_gross

@@ -71,8 +71,7 @@ def compute_government_deductions(employee, pay_period, gross_pay):
     if tax_row:
         base = Decimal(tax_row.base_tax)
         rate = Decimal(tax_row.rate_above)
-        exempt = Decimal(tax_row.exemption_amount)
-        tax_monthly = base + (taxable_income - exempt) * rate
+        tax_monthly = round(base + (taxable_income - Decimal(tax_row.compensation_from)) * rate, 2)
         if tax_monthly < 0:
             tax_monthly = Decimal('0')
 

@@ -2,19 +2,47 @@ from rest_framework import serializers
 from .models import PayPeriod, Payslip, PayslipDailyDetail, PayslipAdjustment
 
 
+def _user_display_name(user):
+    """Return full name if available, otherwise username. None if user is None."""
+    if not user:
+        return None
+    full = user.get_full_name().strip()
+    return full if full else user.username
+
+
 class PayPeriodSerializer(serializers.ModelSerializer):
+    locked_by_name   = serializers.SerializerMethodField()
+    unlocked_by_name = serializers.SerializerMethodField()
+
     class Meta:
         model = PayPeriod
         fields = [
             'id', 'start_date', 'end_date', 'status', 'period_type',
-            'locked_by', 'locked_at', 'unlocked_by', 'unlocked_at',
+            'locked_by', 'locked_by_name','locked_at', 'unlocked_by', 'unlocked_by_name', 'unlocked_at',
             'created_at', 'updated_at',
         ]
         read_only_fields = [
             'id', 'created_at', 'updated_at',
-            'locked_by', 'locked_at', 'unlocked_by', 'unlocked_at',
+            'locked_by', 'locked_by_name', 'locked_at', 'unlocked_by','unlocked_by_name',  'unlocked_at',
         ]
 
+    def get_locked_by_name(self, obj):
+        return _user_display_name(obj.locked_by)
+
+    def get_unlocked_by_name(self, obj):
+        return _user_display_name(obj.unlocked_by)
+
+class PayPeriodMiniSerializer(serializers.ModelSerializer):
+    label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PayPeriod
+        fields = ['id', 'start_date', 'end_date', 'period_type', 'status', 'label']
+
+    def get_label(self, obj):
+        start = obj.start_date.strftime('%b %d').replace(' 0', ' ')
+        end = obj.end_date.strftime('%b %d, %Y').replace(' 0', ' ')
+        return f"{start} – {end}"
 
 class PayslipDailyDetailSerializer(serializers.ModelSerializer):
     class Meta:
@@ -35,13 +63,12 @@ class PayslipAdjustmentSerializer(serializers.ModelSerializer):
 class PayslipSerializer(serializers.ModelSerializer):
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
     daily_details = PayslipDailyDetailSerializer(many=True, read_only=True) 
-    period_type = serializers.SerializerMethodField()
     adjustments = PayslipAdjustmentSerializer(many=True, read_only=True)
     job_title_name = serializers.SerializerMethodField()
     department_name = serializers.SerializerMethodField()
     allowance_breakdown = serializers.SerializerMethodField()
     daily_rate = serializers.SerializerMethodField()
-    
+    pay_period = PayPeriodMiniSerializer(read_only=True)
 
     class Meta:
         model = Payslip
@@ -50,10 +77,10 @@ class PayslipSerializer(serializers.ModelSerializer):
             'basic_pay','daily_rate','allowance_breakdown', 'allowances_total',
             'late_deduction_total', 'absent_deduction_total',
             'undertime_deduction_total', 'holiday_pay_total',
-            'overtime_pay', 'overtime_regular_pay', 'overtime_special_pay','nsd_total',
+            'overtime_pay', 'overtime_regular_pay', 'overtime_special_pay','nsd_total','rest_day_premium_total', 
             'gross_pay',
             'sss_deduction', 'philhealth_deduction', 'pagibig_deduction',
-            'tax_deduction', 'adjustments','period_type','net_pay',
+            'tax_deduction', 'adjustments','net_pay',
             'absence_count', 'absence_dates', 'leave_count', 'leave_dates',
             'remaining_leave_balance',
             'status', 'created_at', 'updated_at',
@@ -64,9 +91,9 @@ class PayslipSerializer(serializers.ModelSerializer):
             'late_deduction_total', 'absent_deduction_total',
             'undertime_deduction_total', 'holiday_pay_total','overtime_pay','overtime_regular_pay', 'overtime_special_pay', 
             'sss_deduction', 'philhealth_deduction', 'pagibig_deduction',
-            'tax_deduction', 'net_pay','period_type','adjustments','absence_count', 'absence_dates', 'leave_count', 'leave_dates',
+            'tax_deduction', 'net_pay','pay_period','adjustments','absence_count', 'absence_dates', 'leave_count', 'leave_dates',
             'remaining_leave_balance','job_title_name','department_name','nsd_total',
-            'allowance_breakdown','daily_rate',
+            'allowance_breakdown','daily_rate','rest_day_premium_total',    
         ]
     def get_daily_rate(self, obj):
         employee = obj.employee
@@ -134,7 +161,3 @@ class PayslipSerializer(serializers.ModelSerializer):
             })
         return breakdown
     
-    def get_period_type(self, obj):
-        return obj.pay_period.period_type if obj.pay_period else None        
-
-
