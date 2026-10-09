@@ -12,6 +12,8 @@ from rest_framework.parsers import MultiPartParser
 from users.permissions import CanImportAttendance
 from .utils.importer import import_attendance
 import logging
+from django.utils import timezone
+from employees.models import Employee
 
 logger = logging.getLogger(__name__)
 
@@ -197,3 +199,50 @@ class AttendanceImportView(APIView):
         )
 
         return Response(summary, status=status.HTTP_200_OK)
+
+class BiometricAttendanceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        company_id = request.data.get('company_id')
+        device_id = request.data.get('device_id', 'ZK9500')
+
+        if not company_id:
+            return Response(
+                {'error': 'company_id is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            employee = Employee.objects.get(company_id=company_id)
+        except Employee.DoesNotExist:
+            return Response(
+                {'error': f'Employee {company_id} not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        now = timezone.localtime()
+        today = now.date()
+
+        record, created = AttendanceRecord.objects.get_or_create(
+            employee=employee,
+            date=today,
+            defaults={
+                'clock_in': now,
+                'status': AttendanceRecord.Status.PRESENT,
+                'is_manual': False,
+                'remarks': f'Biometric ({device_id})',
+            },
+        )
+
+        if not created and not record.clock_out:
+            record.clock_out = now
+            record.save()
+
+        return Response({
+            'employee': employee.full_name,
+            'date': str(today),
+            'clock_in': str(record.clock_in),
+            'status': record.status,
+            'created': created,
+        }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)

@@ -241,3 +241,25 @@ class EmployeeSalary(models.Model):
     class Meta:
         ordering = ['-effective_date']
         verbose_name_plural = "Employee Salaries"
+
+class EmployeeFingerprint(models.Model):
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name='fingerprints',
+    )
+    finger_id = models.PositiveIntegerField(
+        help_text="Device-local finger ID used in ZK9500 SDK"
+    )
+    template = models.BinaryField(
+        help_text="Raw fingerprint template from ZK9500"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['employee', 'finger_id']
+        ordering = ['employee', 'finger_id']
+
+    def __str__(self):
+        return f"{self.employee} — finger {self.finger_id}"

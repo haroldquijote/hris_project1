@@ -8,7 +8,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import JSONParser,MultiPartParser, FormParser
 from users.permissions import CanManageEmployees
 from audit.utils import log_action
-from .models import Employee, EmployeeSalary, Department, JobTitle,  AllowanceType, EmployeeAllowance
+from .models import Employee, EmployeeSalary, Department, JobTitle,  AllowanceType, EmployeeAllowance, EmployeeFingerprint   
 from .serializers import (
     EmployeeSerializer,
     EmployeeListSerializer,
@@ -16,8 +16,10 @@ from .serializers import (
     EmployeeSalaryCreateSerializer,
     DepartmentSerializer,
     JobTitleSerializer,
-    AllowanceTypeSerializer, EmployeeAllowanceSerializer
+    AllowanceTypeSerializer, EmployeeAllowanceSerializer,
+    EmployeeFingerprintSerializer
 )
+import base64
 
 
 # ================================================================
@@ -444,3 +446,45 @@ class EmployeeAllowanceDetailView(APIView):
             return Response({"error": "Allowance does not belong to this employee"}, status=status.HTTP_400_BAD_REQUEST)
         allowance.delete()
         return Response({"message": "Allowance deleted"}, status=status.HTTP_204_NO_CONTENT)
+
+class FingerprintListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        fps = EmployeeFingerprint.objects.select_related('employee').all()
+        serializer = EmployeeFingerprintSerializer(fps, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        company_id = request.data.get('company_id')
+        finger_id = request.data.get('finger_id')
+        template_b64 = request.data.get('template')
+
+        if not all([company_id, finger_id, template_b64]):
+            return Response(
+                {'error': 'company_id, finger_id, and template are required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            employee = Employee.objects.get(company_id=company_id)
+        except Employee.DoesNotExist:
+            return Response(
+                {'error': f'Employee {company_id} not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        template_bytes = base64.b64decode(template_b64)
+
+        fp, created = EmployeeFingerprint.objects.update_or_create(
+            employee=employee,
+            finger_id=finger_id,
+            defaults={'template': template_bytes},
+        )
+
+        return Response({
+            'id': fp.id,
+            'company_id': company_id,
+            'finger_id': finger_id,
+            'created': created,
+        }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)

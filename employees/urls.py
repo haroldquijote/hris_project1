@@ -26,4 +26,7 @@ urlpatterns = [
     # ========== EMPLOYEE ALLOWANCE URLs ==========
     path('<int:employee_pk>/allowances/', views.EmployeeAllowanceListView.as_view(), name='employee-allowance-list'),
     path('<int:employee_pk>/allowances/<int:allowance_pk>/', views.EmployeeAllowanceDetailView.as_view(), name='employee-allowance-detail'),
+
+    #Employee Fingerprint   
+    path('fingerprints/', views.FingerprintListCreateView.as_view(), name='fingerprint-list'),
 ]

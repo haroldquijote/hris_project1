@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import Employee, Department, JobTitle, EmployeeSalary, AllowanceType, EmployeeAllowance
 from attendance.serializers import WorkScheduleSerializer
-
+from .models import EmployeeFingerprint
+import base64
 
 # ================================================================
 # Nested / Supporting Serializers
@@ -296,3 +297,16 @@ class EmployeeAllowanceSerializer(serializers.ModelSerializer):
             'amount', 'effective_date', 'end_date', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+class EmployeeFingerprintSerializer(serializers.ModelSerializer):
+    company_id = serializers.CharField(source='employee.company_id', read_only=True)
+
+    class Meta:
+        model = EmployeeFingerprint
+        fields = ['id', 'employee', 'company_id', 'finger_id', 'template', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['template'] = base64.b64encode(instance.template).decode('utf-8')
+        return data
