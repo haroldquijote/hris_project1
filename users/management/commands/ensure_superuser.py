@@ -9,8 +9,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         User = get_user_model()
         username = os.environ.get('SUPERUSER_USERNAME')
-        email = os.environ.get('SUPERUSER_EMAIL', '')
         password = os.environ.get('SUPERUSER_PASSWORD')
+        email = os.environ.get('SUPERUSER_EMAIL', '')
 
         if not username or not password:
             self.stdout.write(self.style.WARNING(
@@ -18,17 +18,19 @@ class Command(BaseCommand):
             ))
             return
 
-        if User.objects.filter(username=username).exists():
-            self.stdout.write(self.style.SUCCESS(
-                f'Superuser "{username}" already exists. Skipping.'
-            ))
-            return
+        user, created = User.objects.get_or_create(username=username)
+        user.is_staff = True
+        user.is_superuser = True
+        user.set_password(password)
+        user.save()
 
-        User.objects.create_superuser(
-            username=username,
-            email=email,
-            password=password,
-        )
-        self.stdout.write(self.style.SUCCESS(
-            f'Superuser "{username}" created.'
-        ))
+        # Ensure Profile exists
+        from users.models import Profile
+        profile, profile_created = Profile.objects.get_or_create(user=user)
+        if profile_created:
+            self.stdout.write(self.style.SUCCESS(
+                f'Profile created for superuser "{username}".'
+            ))
+
+        action = "created" if created else "updated"
+        self.stdout.write(self.style.SUCCESS(f'Superuser "{username}" {action}.'))

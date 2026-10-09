@@ -1,5 +1,16 @@
 from rest_framework.permissions import BasePermission
 
+def _has_profile_flag(user, flag_name):
+    """Return True if user is HRADMIN or has the given profile flag.
+    Returns False for anonymous users or users without a Profile."""
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    profile = getattr(user, 'profile', None)
+    if not profile:
+        return False
+    return profile.role == 'HRADMIN' or getattr(profile, flag_name, False)
 
 class IsHRAdmin(BasePermission):
     message = "Only HR Administrators can perform this action."
@@ -61,4 +72,6 @@ class CanImportAttendance(BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
-        return user.profile.role == 'HRADMIN' or user.profile.can_import_attendance 
+        return user.profile.role == 'HRADMIN' or user.profile.can_import_attendance
+
+ 
