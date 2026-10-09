@@ -24,13 +24,17 @@ class Command(BaseCommand):
         user.set_password(password)
         user.save()
 
-        # Ensure Profile exists
+        # Ensure Profile exists and has HRADMIN role
         from users.models import Profile
         profile, profile_created = Profile.objects.get_or_create(user=user)
+        profile.role = 'HRADMIN'                
+        profile.must_change_password = False        
+        profile.save()                              
+
         if profile_created:
             self.stdout.write(self.style.SUCCESS(
                 f'Profile created for superuser "{username}".'
             ))
 
         action = "created" if created else "updated"
-        self.stdout.write(self.style.SUCCESS(f'Superuser "{username}" {action}.'))
+        self.stdout.write(self.style.SUCCESS(f'Superuser "{username}" {action} with HRADMIN role.'))
