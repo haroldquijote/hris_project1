@@ -1,7 +1,7 @@
 import openpyxl
 from datetime import date, datetime, time
 from django.utils import timezone
-
+from attendance.services import compute_attendance_status
 
 def _parse_date(value):
     """Handle date or datetime objects returned by openpyxl."""
@@ -154,7 +154,7 @@ def import_attendance(file):
             clock_in = _parse_time(record_date, row['clock_in'])
             clock_out = _parse_time(record_date, row['clock_out'])
 
-            status = _compute_status(employee, record_date, clock_in)
+            status_code, _note = compute_attendance_status(employee, record_date, clock_in) if clock_in else ('ABSENT', None)
 
             _, was_created = AttendanceRecord.objects.update_or_create(
                 employee=employee,
@@ -162,9 +162,9 @@ def import_attendance(file):
                 defaults={
                     'clock_in': clock_in,
                     'clock_out': clock_out,
-                    'status': status,
+                    'status': status_code,
                     'is_manual': False,
-                }
+                },
             )
 
             if was_created:

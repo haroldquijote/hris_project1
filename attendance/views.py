@@ -14,6 +14,7 @@ from .utils.importer import import_attendance
 import logging
 from django.utils import timezone
 from employees.models import Employee
+from .services import compute_attendance_status
 
 logger = logging.getLogger(__name__)
 
@@ -226,12 +227,25 @@ class BiometricAttendanceView(APIView):
         now = timezone.localtime()
         today = now.date()
 
+        status_code, note = compute_attendance_status(employee, today, now)
+
+        if status_code == 'PAST_SHIFT':
+            return Response({
+                'error': note,
+                'employee': employee.full_name,
+                'company_id': company_id,
+                'date': str(today),
+                'scan_time': str(now),
+                'status': 'REJECTED',
+                'action': 'past_shift',
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         record, created = AttendanceRecord.objects.get_or_create(
             employee=employee,
             date=today,
             defaults={
                 'clock_in': now,
-                'status': AttendanceRecord.Status.PRESENT,
+                'status': status_code,
                 'is_manual': False,
                 'remarks': f'Biometric ({device_id})',
             },
@@ -272,4 +286,5 @@ class BiometricAttendanceView(APIView):
             'status': record.status,
             'action': action,
             'created': created,
+            'note': note,
         }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)

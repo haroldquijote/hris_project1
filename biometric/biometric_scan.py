@@ -13,6 +13,7 @@ from pyzkfp import ZKFP2
 
 API_BASE = os.environ.get('HRIS_API_BASE', 'http://localhost:8000')
 TOKEN = os.environ.get('HRIS_TOKEN')
+SCAN_COOLDOWN_SECONDS = 10
 
 if not TOKEN:
     print("ERROR: HRIS_TOKEN environment variable not set.")
@@ -41,7 +42,6 @@ if zkfp2.GetDeviceCount() == 0:
 
 zkfp2.OpenDevice(0)
 
-# Map finger_id -> company_id
 finger_map = {}
 for entry in all_fps:
     fid = entry['finger_id']
@@ -51,6 +51,8 @@ for entry in all_fps:
     print(f"  Loaded finger {fid} → {entry['company_id']}")
 
 print(f"\nReady. Place your finger to clock in. Ctrl+C to stop.\n")
+
+last_scan_time = {}
 
 try:
     while True:
@@ -64,6 +66,16 @@ try:
         if finger_id == -1 or score < 50:
             print(f"No match (score={score})")
             continue
+
+        # Client-side cooldown
+        now = time.time()
+        if finger_id in last_scan_time:
+            elapsed = now - last_scan_time[finger_id]
+            if elapsed < SCAN_COOLDOWN_SECONDS:
+                remaining = SCAN_COOLDOWN_SECONDS - int(elapsed)
+                print(f"Cooldown: wait {remaining}s before scanning again")
+                time.sleep(1)
+                continue
 
         company_id = finger_map.get(finger_id)
         if not company_id:
@@ -87,10 +99,11 @@ try:
 
         if response.status_code in (200, 201):
             print("  Attendance recorded:", response.json())
+            last_scan_time[finger_id] = now  # only cooldown on success
         else:
             print(f"  ERROR {response.status_code}: {response.text}")
 
-        time.sleep(2)
+        time.sleep(1)
 
 except KeyboardInterrupt:
     print("\nStopping...")
