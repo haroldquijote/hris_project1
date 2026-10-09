@@ -203,6 +203,8 @@ class AttendanceImportView(APIView):
 class BiometricAttendanceView(APIView):
     permission_classes = [IsAuthenticated]
 
+    MIN_MINUTES_BEFORE_CLOCK_OUT = 5
+
     def post(self, request):
         company_id = request.data.get('company_id')
         device_id = request.data.get('device_id', 'ZK9500')
@@ -235,14 +237,39 @@ class BiometricAttendanceView(APIView):
             },
         )
 
-        if not created and not record.clock_out:
+        action = 'already_complete'
+
+        if created:
+            action = 'clock_in'
+
+        elif not record.clock_out:
+            minutes_since_clock_in = (now - record.clock_in).total_seconds() / 60
+
+            if minutes_since_clock_in < self.MIN_MINUTES_BEFORE_CLOCK_OUT:
+                return Response({
+                    'employee': employee.full_name,
+                    'date': str(today),
+                    'clock_in': str(record.clock_in),
+                    'clock_out': None,
+                    'status': record.status,
+                    'action': 'too_soon_for_clock_out',
+                    'created': False,
+                    'message': (
+                        f'Already clocked in at {record.clock_in.strftime("%H:%M:%S")}. '
+                        f'Clock-out allowed after {self.MIN_MINUTES_BEFORE_CLOCK_OUT} minutes.'
+                    ),
+                }, status=status.HTTP_200_OK)
+
             record.clock_out = now
             record.save()
+            action = 'clock_out'
 
         return Response({
             'employee': employee.full_name,
             'date': str(today),
             'clock_in': str(record.clock_in),
+            'clock_out': str(record.clock_out) if record.clock_out else None,
             'status': record.status,
+            'action': action,
             'created': created,
         }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
