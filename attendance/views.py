@@ -227,17 +227,30 @@ class BiometricAttendanceView(APIView):
         now = timezone.localtime()
         today = now.date()
 
-        status_code, note = compute_attendance_status(employee, today, now)
-
-        if status_code == 'PAST_SHIFT':
+        # Reject if no work schedule assigned
+        if not employee.work_schedule:
             return Response({
-                'error': note,
+                'error': 'Employee has no work schedule assigned.',
                 'employee': employee.full_name,
                 'company_id': company_id,
                 'date': str(today),
                 'scan_time': str(now),
                 'status': 'REJECTED',
-                'action': 'past_shift',
+                'action': 'no_schedule',
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        status_code, note = compute_attendance_status(employee, today, now)
+
+        # Reject rest-day and past-shift scans
+        if status_code in ('PAST_SHIFT', 'REST_DAY'):
+            return Response({
+                'error': note or f'Scan not allowed: {status_code}',
+                'employee': employee.full_name,
+                'company_id': company_id,
+                'date': str(today),
+                'scan_time': str(now),
+                'status': 'REJECTED',
+                'action': status_code.lower(),
             }, status=status.HTTP_400_BAD_REQUEST)
 
         record, created = AttendanceRecord.objects.get_or_create(
