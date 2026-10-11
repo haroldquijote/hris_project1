@@ -96,15 +96,12 @@ class PayslipSerializer(serializers.ModelSerializer):
             'allowance_breakdown','daily_rate','rest_day_premium_total',    
         ]
     def get_daily_rate(self, obj):
-        employee = obj.employee
-        # Get active monthly salary
-        from employees.models import EmployeeSalary
-        active_salary = EmployeeSalary.objects.filter(
-            employee=employee, end_date__isnull=True
-        ).first()
-        if not active_salary:
+        # Use prefetched salaries instead of hitting the DB
+        active = [s for s in obj.employee.salaries.all() if s.end_date is None]
+        if not active:
             return None
-        # 365‑day factor: daily rate = (monthly * 12) / 365
+        active_salary = active[0]
+        # 365-day factor: daily rate = (monthly * 12) / 365
         return round((active_salary.base_salary * 12) / 365, 2)
     
     def get_job_title_name(self, obj):
@@ -120,7 +117,6 @@ class PayslipSerializer(serializers.ModelSerializer):
         return None
 
     def get_allowance_breakdown(self, obj):
-        from employees.models import EmployeeAllowance
         import calendar
         from decimal import Decimal
 
@@ -129,10 +125,12 @@ class PayslipSerializer(serializers.ModelSerializer):
         if not obj.allowances_total or Decimal(obj.allowances_total) == 0:
             return []
 
-        allowances = EmployeeAllowance.objects.filter(
-            employee=obj.employee,
-            end_date__isnull=True
-        )
+        # Use prefetched allowances (filtered in Python, no new query)
+        allowances = [
+            a for a in obj.employee.allowances.all()
+            if a.end_date is None
+        ]
+
         if not allowances or not obj.pay_period:
             return []
 

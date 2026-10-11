@@ -229,29 +229,52 @@ class PayslipListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        base_qs = Payslip.objects.select_related(
+            'pay_period',
+            'employee',
+            'employee__department',
+            'employee__job_title',
+            'employee__work_schedule',
+        ).prefetch_related(
+            'daily_details',
+            'adjustments',
+            'employee__allowances',
+            'employee__allowances__allowance_type',
+            'employee__salaries',
+        )
+
         period_id = request.query_params.get('pay_period')
         if period_id:
-            payslips = Payslip.objects.select_related('pay_period').filter(pay_period_id=period_id)
+            payslips = base_qs.filter(pay_period_id=period_id)
         else:
-            payslips = Payslip.objects.select_related('pay_period').all()
+            payslips = base_qs.all()
+
         serializer = PayslipSerializer(payslips, many=True)
         return Response(serializer.data)
     
 class PayslipDetailView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get_object(self, pk):
-        return get_object_or_404(Payslip, pk=pk)
+        return get_object_or_404(
+            Payslip.objects.select_related(
+                'pay_period',
+                'employee',
+                'employee__department',
+                'employee__job_title',
+                'employee__work_schedule',
+            ).prefetch_related(
+                'daily_details',
+                'adjustments',
+                'employee__allowances',
+                'employee__salaries',
+            ),
+            pk=pk,
+        )
+
     def get(self, request, pk):
         payslip = self.get_object(pk)
         serializer = PayslipSerializer(payslip)
-        return Response(serializer.data)
-
-class PayslipDailyDetailView(APIView):
-    permission_classes = [IsAuthenticated]
-    def get(self, request, payslip_id):
-        payslip = get_object_or_404(Payslip, pk=payslip_id)
-        details = payslip.daily_details.all().order_by('date')
-        serializer = PayslipDailyDetailSerializer(details, many=True)
         return Response(serializer.data)
 
 class PayslipAdjustmentListCreateView(APIView):
