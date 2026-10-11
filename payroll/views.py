@@ -69,10 +69,25 @@ class ComputeGrossPayView(APIView):
                 {'error': 'Cannot recompute payslips for a locked period.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # ---------- Skip if already computed (unless ?force=true) ----------
+        existing_count = Payslip.objects.filter(pay_period=pay_period).count()
+        force = request.query_params.get('force', '').lower() in ('1', 'true', 'yes')
+
+        if existing_count > 0 and not force:
+            return Response({
+                'message': (
+                    f'{existing_count} payslip(s) already computed for this period. '
+                    f'Pass ?force=true to recompute.'
+                ),
+                'skipped': True,
+                'existing_payslips': existing_count,
+            }, status=status.HTTP_200_OK)
+
         active_employees = Employee.objects.exclude(
             employment_status__in=['RESIGNED', 'TERMINATED']
         )
-         # -----------------------------------------------
+        # -----------------------------------------------
         created_count = 0
         skipped_count = 0
 
