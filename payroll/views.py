@@ -76,11 +76,8 @@ class ComputeGrossPayView(APIView):
 
         if existing_count > 0 and not force:
             return Response({
-                'message': (
-                    f'{existing_count} payslip(s) already computed for this period. '
-                    f'Pass ?force=true to recompute.'
-                ),
-                'skipped': True,
+                'message': f'{existing_count} payslip(s) already computed for this period.',
+                'status': 'up_to_date',
                 'existing_payslips': existing_count,
             }, status=status.HTTP_200_OK)
 
