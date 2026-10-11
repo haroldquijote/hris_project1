@@ -300,6 +300,15 @@ class PayslipAdjustmentListCreateView(APIView):
             return Response(PayslipSerializer(payslip).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class PayslipDailyDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, payslip_id):
+        payslip = get_object_or_404(Payslip, pk=payslip_id)
+        details = payslip.daily_details.all().order_by('date')
+        serializer = PayslipDailyDetailSerializer(details, many=True)
+        return Response(serializer.data)
+
 class CompanySettingsView(APIView):
     permission_classes = [IsAuthenticated]
 
