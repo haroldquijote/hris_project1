@@ -35,3 +35,5 @@ build/
 
 # Windows
 Thumbs.db
+
+biometric/kiosk/.env
