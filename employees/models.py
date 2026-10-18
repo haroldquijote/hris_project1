@@ -249,7 +249,8 @@ class EmployeeFingerprint(models.Model):
         related_name='fingerprints',
     )
     finger_id = models.PositiveIntegerField(
-        help_text="Device-local finger ID used in ZK9500 SDK"
+        unique=True,
+        help_text="Device-local finger ID (must be unique across all employees)"
     )
     template = models.BinaryField(
         help_text="Raw fingerprint template from ZK9500"
