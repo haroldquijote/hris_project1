@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Enroll Fingerprint</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+            background: #f5f7fb;
+            color: #243247;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+         .company {
+            position: absolute;
+            top: 30px;
+            left: -30px;
+            width: 100%;
+            text-align: center;
+            color: #405b8d;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            margin: 10px 35px;
+        }
+
+        .company-subtitle {
+            margin-top: 5px;
+            color: #7089b8;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 0;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 520px;
+            margin: 0 auto;
+            padding: 35px 40px;
+            border-radius: 12px;
+            border: 1px solid #d8e2f1;
+            box-shadow: 0 8px 24px rgba(38, 61, 99, 0.08);
+        }
+
+        h1 { font-size: 1.5rem; margin-bottom: 8px; }
+        .subtitle { color: #68758a; margin-bottom: 30px; font-size: 0.95rem; }
+
+        label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px; color: #334155; }
+
+        input, select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #d8e2f1;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 20px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #405b8d;
+            box-shadow: 0 0 0 3px rgba(64, 91, 141, 0.12);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-primary { background: #405b8d; color: #ffffff; }
+        .btn-primary:hover:not(:disabled) { background: #314873; }
+        .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+        .btn-secondary { background: #e8eef8; color: #405b8d; }
+        .btn-secondary:hover { background: #dbe5f5; }
+
+        .progress {
+            text-align: center;
+            padding: 30px 0;
+        }
+        .progress .icon { font-size: 5rem; margin-bottom: 20px; line-height: 1; }
+        .progress .title { font-size: 1.5rem; font-weight: 600; margin-bottom: 10px; }
+        .progress .msg { color: #64748b; font-size: 1rem; }
+
+        .steps { display: flex; justify-content: center; gap: 12px; margin-top: 30px; }
+        .step {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: #e2e8f0;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 600; color: #64748b;
+            transition: all 0.3s;
+        }
+        .step.done { background: #dcfce7; color: #15803d; }
+        .step.active { background: #405b8d; color: #ffffff; transform: scale(1.1); }
+
+        .status-icon-success { color: #15803d !important; }
+        .status-icon-error { color: #be123c !important; }
+
+        .button-row { display: flex; gap: 12px; margin-top: 24px; }
+        .button-row button { flex: 1; }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="company">
+        <div>PHILIPPINE HOME PHARMACEUTICAL</div>
+        <div class="company-subtitle">Fingerprint Enrollment</div>
+    </div>
+
+    <div class="card">
+        <!-- IDLE: form -->
+        <div id="view-idle">
+            <h1>Enroll Fingerprint</h1>
+            <p class="subtitle">Register a fingerprint for a new employee</p>
+
+            <label>Employee ID</label>
+            <input type="text" id="company_id" placeholder="e.g., EMP001" autocomplete="off">
+
+            <label>Finger Number</label>
+            <select id="finger_id">
+                <option value="1">1 — Right Thumb</option>
+                <option value="2">2 — Right Index</option>
+                <option value="3">3 — Right Middle</option>
+                <option value="4">4 — Right Ring</option>
+                <option value="5">5 — Right Pinky</option>
+                <option value="6">6 — Left Thumb</option>
+                <option value="7">7 — Left Index</option>
+                <option value="8">8 — Left Middle</option>
+                <option value="9">9 — Left Ring</option>
+                <option value="10">10 — Left Pinky</option>
+            </select>
+
+            <button class="btn-primary" id="btn-start" onclick="startEnrollment()">
+                Start Enrollment
+            </button>
+        </div>
+
+        <!-- CAPTURING: showing scan progress -->
+        <div id="view-capturing" class="hidden">
+            <div class="progress">
+                <div class="icon">☝️</div>
+                <div class="title" id="cap-title">Place your finger</div>
+                <div class="msg" id="cap-msg">Scan 1 of 3</div>
+                <div class="steps">
+                    <div class="step" id="step-1">1</div>
+                    <div class="step" id="step-2">2</div>
+                    <div class="step" id="step-3">3</div>
+                </div>
+                <div class="button-row">
+                    <button class="btn-secondary" onclick="cancelEnrollment()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SUCCESS -->
+        <div id="view-success" class="hidden">
+            <div class="progress">
+                <div class="icon status-icon-success">✓</div>
+                <div class="title" id="succ-title">Enrolled</div>
+                <div class="msg" id="succ-msg"></div>
+                <div class="button-row">
+                    <button class="btn-secondary" onclick="resetView()">Enroll Another</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ERROR -->
+        <div id="view-error" class="hidden">
+            <div class="progress">
+                <div class="icon status-icon-error">✗</div>
+                <div class="title">Enrollment Failed</div>
+                <div class="msg" id="err-msg"></div>
+                <div class="button-row">
+                    <button class="btn-secondary" onclick="resetView()">Try Again</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MERGING -->
+        <div id="view-merging" class="hidden">
+            <div class="progress">
+                <div class="icon">⏳</div>
+                <div class="title">Processing...</div>
+                <div class="msg">Merging fingerprint templates</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let lastEventId = 0;
+        let pollTimer = null;
+
+        function showView(id) {
+            ['view-idle','view-capturing','view-success','view-error','view-merging']
+                .forEach(v => document.getElementById(v).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function updateSteps(count) {
+            for (let i = 1; i <= 3; i++) {
+                const el = document.getElementById('step-' + i);
+                el.className = 'step';
+                if (i <= count) el.classList.add('done');
+                else if (i === count + 1) el.classList.add('active');
+            }
+        }
+
+        async function startEnrollment() {
+            const company_id = document.getElementById('company_id').value.trim();
+            const finger_id = document.getElementById('finger_id').value;
+
+            if (!company_id) { alert('Enter an Employee ID'); return; }
+
+            document.getElementById('btn-start').disabled = true;
+            try {
+                const res = await fetch('/api/enroll/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({company_id, finger_id}),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    alert(data.error || 'Could not start enrollment');
+                    document.getElementById('btn-start').disabled = false;
+                    return;
+                }
+                showView('view-capturing');
+                updateSteps(0);
+                startPolling();
+            } catch (e) {
+                alert('Server unreachable');
+                document.getElementById('btn-start').disabled = false;
+            }
+        }
+
+        async function cancelEnrollment() {
+            stopPolling();
+            await fetch('/api/enroll/reset', {method: 'POST'});
+            resetView();
+        }
+
+        function resetView() {
+            stopPolling();
+            document.getElementById('company_id').value = '';
+            document.getElementById('btn-start').disabled = false;
+            showView('view-idle');
+        }
+
+        function startPolling() {
+            stopPolling();
+            pollTimer = setInterval(pollStatus, 500);
+        }
+
+        function stopPolling() {
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        }
+
+        async function pollStatus() {
+            try {
+                const res = await fetch('/api/enroll/status');
+                const data = await res.json();
+                if (data.event_id === lastEventId) return;
+                lastEventId = data.event_id;
+                renderStatus(data);
+            } catch (e) {}
+        }
+
+        function renderStatus(data) {
+            if (data.status === 'capturing') {
+                showView('view-capturing');
+                updateSteps(data.scan_count || 0);
+                document.getElementById('cap-msg').innerText = data.message || `Scan ${(data.scan_count||0)+1} of 3`;
+            } else if (data.status === 'merging') {
+                showView('view-merging');
+            } else if (data.status === 'success') {
+                stopPolling();
+                document.getElementById('succ-title').innerText = data.employee_name || 'Enrolled';
+                document.getElementById('succ-msg').innerText = data.message || '';
+                showView('view-success');
+            } else if (data.status === 'error') {
+                stopPolling();
+                document.getElementById('err-msg').innerText = data.message || 'Unknown error';
+                showView('view-error');
+            }
+        }
+    </script>
+</body>
+</html>
