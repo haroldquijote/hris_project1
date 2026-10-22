@@ -15,6 +15,7 @@ import logging
 from django.utils import timezone
 from employees.models import Employee
 from .services import compute_attendance_status
+from payroll.models import PayPeriod
 
 logger = logging.getLogger(__name__)
 
@@ -301,3 +302,45 @@ class BiometricAttendanceView(APIView):
             'created': created,
             'note': note,
         }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+from .dtr import build_dtr
+from users.permissions import IsHRAdmin
+
+
+class EmployeeDTRView(APIView):
+    """
+    GET /api/attendance/dtr/?employee_id=<id>&pay_period=<id>
+    Returns the full DTR for one employee over one pay period.
+    """
+    permission_classes = [IsAuthenticated, IsHRAdmin]
+
+    def get(self, request):
+        employee_id = request.query_params.get('employee_id')
+        pay_period_id = request.query_params.get('pay_period')
+
+        if not employee_id or not pay_period_id:
+            return Response(
+                {'error': 'employee_id and pay_period are required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            employee = Employee.objects.select_related(
+                'department', 'job_title', 'work_schedule'
+            ).get(pk=employee_id)
+        except (Employee.DoesNotExist, ValueError):
+            return Response(
+                {'error': 'Employee not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            pay_period = PayPeriod.objects.get(pk=pay_period_id)
+        except (PayPeriod.DoesNotExist, ValueError):
+            return Response(
+                {'error': 'Pay period not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        data = build_dtr(employee, pay_period)
+        return Response(data)

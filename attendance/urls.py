@@ -7,7 +7,7 @@ urlpatterns = [
     path('<int:pk>/', views.AttendanceDetailView.as_view(), name='attendance-detail'),
     path('import/', views.AttendanceImportView.as_view(), name='attendance-import'),
     path('biometric/', views.BiometricAttendanceView.as_view(), name='biometric-attendance'),
-
+    path('dtr/', views.EmployeeDTRView.as_view(), name='employee-dtr'),
     # Work schedules (now under attendance)
     path('work-schedules/', views.WorkScheduleListCreateView.as_view(), name='workschedule-list'),
     path('work-schedules/<int:pk>/', views.WorkScheduleDetailView.as_view(), name='workschedule-detail'),
