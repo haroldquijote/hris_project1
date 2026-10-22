@@ -179,7 +179,10 @@ class ComputeGrossPayView(APIView):
                     'status': Payslip.Status.DRAFT,
                 }
             )
-
+            # ───────────── 4.5 Apply loan deductions ─────────────
+            from loan.services import apply_loans_to_payslip
+            apply_loans_to_payslip(payslip, pay_period) 
+   
             # ───────────── 5. Recalculate net pay with adjustments ─────────
             payslip.net_pay = compute_net_pay(payslip)
             payslip.save()
@@ -253,6 +256,7 @@ class PayslipListView(APIView):
             'employee__allowances',
             'employee__allowances__allowance_type',
             'employee__salaries',
+            'loan_payments__loan',
         )
 
         period_id = request.query_params.get('pay_period')

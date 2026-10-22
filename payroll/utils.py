@@ -418,5 +418,6 @@ def compute_net_pay(payslip):
         + payslip.tax_deduction
     )
     adj_total = sum(adj.amount for adj in payslip.adjustments.all())
-    net = payslip.gross_pay - gov_total + adj_total
+    loan_total = payslip.loan_deduction_total or Decimal('0.00')
+    net = payslip.gross_pay - gov_total + adj_total - loan_total
     return max(net, Decimal('0.00'))

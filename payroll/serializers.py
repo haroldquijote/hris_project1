@@ -55,10 +55,19 @@ class PayslipDailyDetailSerializer(serializers.ModelSerializer):
 
 
 class PayslipAdjustmentSerializer(serializers.ModelSerializer):
+    effect = serializers.SerializerMethodField()
+
     class Meta:
         model = PayslipAdjustment
-        fields = ['id', 'payslip', 'amount', 'reason', 'created_at']
+        fields = ['id', 'payslip', 'amount', 'effect', 'reason', 'created_at']
         read_only_fields = ['id', 'created_at']
+
+    def get_effect(self, obj):
+        if obj.amount > 0:
+            return 'Addition'
+        elif obj.amount < 0:
+            return 'Deduction'
+        return 'Neutral'
 
 class PayslipSerializer(serializers.ModelSerializer):
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
@@ -80,7 +89,7 @@ class PayslipSerializer(serializers.ModelSerializer):
             'overtime_pay', 'overtime_regular_pay', 'overtime_special_pay','nsd_total','rest_day_premium_total', 
             'gross_pay',
             'sss_deduction', 'philhealth_deduction', 'pagibig_deduction',
-            'tax_deduction', 'adjustments','net_pay',
+            'tax_deduction', 'adjustments','loan_deduction_total','net_pay',
             'absence_count', 'absence_dates', 'leave_count', 'leave_dates',
             'remaining_leave_balance',
             'status', 'created_at', 'updated_at',
@@ -91,7 +100,7 @@ class PayslipSerializer(serializers.ModelSerializer):
             'late_deduction_total', 'absent_deduction_total',
             'undertime_deduction_total', 'holiday_pay_total','overtime_pay','overtime_regular_pay', 'overtime_special_pay', 
             'sss_deduction', 'philhealth_deduction', 'pagibig_deduction',
-            'tax_deduction', 'net_pay','pay_period','adjustments','absence_count', 'absence_dates', 'leave_count', 'leave_dates',
+            'tax_deduction', 'loan_deduction_total','net_pay','pay_period','adjustments','absence_count', 'absence_dates', 'leave_count', 'leave_dates',
             'remaining_leave_balance','job_title_name','department_name','nsd_total',
             'allowance_breakdown','daily_rate','rest_day_premium_total',    
         ]

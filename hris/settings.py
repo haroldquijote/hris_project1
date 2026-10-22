@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'recruitment',
     'dashboard',
     'audit',
+    'loan',
     'simple_history',
     'rest_framework',
     'rest_framework_simplejwt',

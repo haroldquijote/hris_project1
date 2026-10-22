@@ -93,6 +93,7 @@ class Payslip(models.Model):
     pagibig_deduction = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     tax_deduction = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     net_pay = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    loan_deduction_total = models.DecimalField(max_digits=12, decimal_places=2, default=0.00,help_text="Total loan deductions for the period")
     overtime_pay = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     overtime_regular_pay = models.DecimalField(max_digits=12, decimal_places=2, default=0.00,
     help_text="Overtime pay for ordinary working days")
