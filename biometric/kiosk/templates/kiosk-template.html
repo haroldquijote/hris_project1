@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Terminal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+            background: #f5f7fb;
+            color: #243247;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        
+        .terminal-container {
+            width: fit-content;
+            max-width: calc(100% - 32px);
+            min-height: auto;
+            margin:  0 auto;
+            padding: 24px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+            border: 1px solid #d8e2f1;
+            border-radius: 16px;
+            background: #ffffff;
+            box-shadow: 0 8px 24px rgba(38, 61, 99, 0.08);
+        }
+
+        .screen {
+            width: 100%;
+            min-height: auto;
+            height: auto;
+            flex: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+            transition: background 0.3s ease;
+        }
+
+
+        .screen.idle {
+            background: #f5f7fb;
+            border-radius: 16px;
+            padding: 30px 35px;
+        }
+
+        .screen.success {
+            background: #ecfdf3;
+        }
+
+        .screen.error {
+            background: #fff1f2;
+        }
+
+        .screen.warning {
+            background: #fff8e8;
+        }
+
+        .screen .icon {
+            width: 148px;
+            height: 148px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 30px;
+            border-radius: 50%;
+            background: #e8eef8;
+            color: #405b8d;
+            border: 1px solid #d8e2f1;
+            font-size: 5.5rem;
+            line-height: 1;
+            box-shadow: 0 8px 24px rgba(38, 61, 99, 0.08);
+        }
+
+        .screen.success .icon {
+            background: #dcfce7;
+            border-color: #bbf7d0;
+            color: #15803d;
+        }
+
+        .screen.error .icon {
+            background: #ffe4e6;
+            border-color: #fecdd3;
+            color: #be123c;
+        }
+
+        .screen.warning .icon {
+            background: #fef3c7;
+            border-color: #fde68a;
+            color: #b45309;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #243247;
+            margin-bottom: 14px;
+            letter-spacing: -0.03em;
+        }
+
+        .subtitle {
+            font-size: 1.15rem;
+            line-height: 1.6;
+            color: #68758a;
+            max-width: 620px;
+        }
+
+        .screen.success .title {
+            color: #166534;
+        }
+
+        .screen.error .title {
+            color: #9f1239;
+        }
+
+        .screen.warning .title {
+            color: #92400e;
+        }
+
+        .clock {
+            font-size: 2rem;
+            color: #68758a;
+            letter-spacing: 0.04em;
+        }
+
+        .clock-background {
+            position: static;
+            transform: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #405b8d;
+            color: rgb(216, 212, 212);
+            padding: 9px 24px;
+            border-radius: 10px;
+            font-size: 0.90rem;
+            font-weight: 600;
+        }
+
+        .clock {
+            position: static;
+            text-align: center;
+            color: rgb(216, 212, 212);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .company {
+            position: static;
+            width: 100%;
+            text-align: center;
+            color: #405b8d;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            margin-top: 20px;
+            margin-bottom: 50px; 
+        }
+
+        .company-subtitle {
+            margin-top: 5px;
+            color: #90a3c7;
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 8px 24px rgba(38, 61, 99, 0.08);
+            }
+            50% {
+                transform: scale(0.98);
+                box-shadow: 0 5px 16px rgba(38, 61, 99, 0.05);
+            }
+        }
+
+        .screen.idle .icon {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @media (max-width: 600px) {
+            .screen {
+                padding: 24px;
+            }
+
+            .screen .icon {
+                width: 120px;
+                height: 120px;
+                font-size: 4.5rem;
+                margin-bottom: 24px;
+            }
+
+            .title {
+                font-size: 2rem;
+            }
+
+            .subtitle {
+                font-size: 1rem;
+            }
+
+            .company {
+                top: 22px;
+                font-size: 0.75rem;
+            }
+
+            .clock {
+                bottom: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="company">
+        <div>PHILIPPINE HOME PHARMACEUTICAL</div>
+        <div class="company-subtitle">Biometric Attendance Terminal</div>
+    </div>
+
+    <div class="terminal-container">
+    <div class="clock-background">
+        <div>Current Time</div>
+        <div class="clock" id="clock">--:--:--</div>
+    </div>
+
+    <div id="screen" class="screen idle">
+        <div class="icon" id="icon">
+            <svg 
+                viewBox="0 0 100 100"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-label="Fingerprint symbol"
+                role="img">
+                    <g 
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="3.5"
+                        stroke-linecap="round">
+                        <path d="M50 13 C30 13 17 28 17 47"/>
+                        <path d="M50 22 C35 22 26 33 26 48"/>
+                        <path d="M50 31 C40 31 35 39 35 49"/>
+                        <path d="M50 40 C46 40 44 44 44 50"/>
+                        <path d="M50 13 C70 13 83 28 83 47"/>
+                        <path d="M50 22 C65 22 74 33 74 48"/>
+                        <path d="M50 31 C60 31 65 39 65 49"/>
+                        <path d="M50 40 C54 40 56 44 56 50"/>
+                        <path d="M17 54 C18 73 28 85 40 91"/>
+                        <path d="M26 56 C27 70 33 79 42 84"/>
+                        <path d="M35 57 C36 66 40 73 46 77"/>
+                        <path d="M83 54 C82 73 72 85 60 91"/>
+                        <path d="M74 56 C73 70 67 79 58 84"/>
+                        <path d="M65 57 C64 66 60 73 54 77"/>
+                        <path d="M50 49 C49 62 50 72 50 80"/>
+                    </g>
+            </svg>
+        </div>
+        <div class="title" id="title">Ready to Scan</div>
+        <div class="subtitle" id="subtitle">Place your registered finger on the scanner to record your attendance.</div>
+    </div>
+    </div>
+
+    
+
+    <script>
+        let lastEventId = 0;
+        let resetTimer = null;
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText =
+                now.toLocaleTimeString('en-US', { hour12: true });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        setInterval(async () => {
+            try {
+                const res = await fetch('/api/last-scan');
+                const data = await res.json();
+                if (data.event_id && data.event_id !== lastEventId) {
+                    lastEventId = data.event_id;
+                    showState(data);
+                }
+            } catch (e) {}
+        }, 500);
+
+        function showState(data) {
+            const screen = document.getElementById('screen');
+            const icon = document.getElementById('icon');
+            const title = document.getElementById('title');
+            const subtitle = document.getElementById('subtitle');
+
+            if (resetTimer) clearTimeout(resetTimer);
+            screen.className = 'screen ' + (data.status || 'idle');
+
+            if (data.status === 'success') {
+                icon.innerText = '✓';
+                title.innerText = data.employee || 'Recorded';
+                subtitle.innerText = data.message || '';
+            } else if (data.status === 'error') {
+                icon.innerText = '✗';
+                title.innerText = 'Not recognized';
+                subtitle.innerText = 'Wipe your finger and try again';
+            } else if (data.status === 'warning') {
+                icon.innerText = '⏱';
+                title.innerText = data.employee || 'Already recorded';
+                subtitle.innerText = data.message || '';
+            }
+
+            resetTimer = setTimeout(() => {
+                screen.className = 'screen idle';
+                icon.innerText = '☝️';
+                title.innerText = 'Place your finger';
+                subtitle.innerText = 'on the scanner below';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
