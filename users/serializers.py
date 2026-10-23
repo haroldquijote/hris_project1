@@ -166,7 +166,7 @@ class AssistantPermissionsSerializer(serializers.ModelSerializer):
         model = Profile
         fields = [
             'can_manage_leave', 'can_manage_overtime',
-            'can_manage_employees', 'can_delete_records', 'can_lock_payroll','can_manage_leave_adjustments','can_import_attendance',     
+            'can_manage_employees', 'can_delete_records', 'can_manage_loans', 'can_lock_payroll','can_manage_leave_adjustments','can_import_attendance',     
         ]
 
 class CreateAssistantSerializer(serializers.Serializer):
