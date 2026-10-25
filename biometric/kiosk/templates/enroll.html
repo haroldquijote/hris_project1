@@ -8,42 +8,89 @@
 
         body {
             font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-            background: #f1f5f9;
-            color: #0f172a;
+            background: #f5f7fb;
+            color: #243247;
             min-height: 100vh;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .company {
+            position: absolute;
+            top: 30px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: #405b8d;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+        }
+
+        .company-subtitle {
+            margin-top: 5px;
+            color: #7089b8;
+            font-size: 0.9rem;
+            font-weight: 700;
         }
 
         .card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
             width: 100%;
-            max-width: 480px;
-            padding: 40px;
+            max-width: 520px;
+            margin: 0 auto;
+            padding: 35px 40px;
+            border-radius: 12px;
+            border: 1px solid #d8e2f1;
+            box-shadow: 0 8px 24px rgba(38, 61, 99, 0.08);
+            background: #ffffff;
         }
 
         h1 { font-size: 1.5rem; margin-bottom: 8px; }
-        .subtitle { color: #64748b; margin-bottom: 30px; font-size: 0.95rem; }
+        .subtitle { color: #68758a; margin-bottom: 30px; font-size: 0.95rem; }
 
-        label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px; color: #334155; }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: #68758a;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: color 0.15s;
+        }
+
+        .back-link:hover { color: #405b8d; }
+        .back-link svg { width: 16px; height: 16px; }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #334155;
+        }
 
         input, select {
             width: 100%;
             padding: 12px 14px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid #d8e2f1;
             border-radius: 8px;
             font-size: 1rem;
             margin-bottom: 20px;
-            transition: border-color 0.15s;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #ffffff;
         }
         input:focus, select:focus {
             outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+            border-color: #405b8d;
+            box-shadow: 0 0 0 3px rgba(64, 91, 141, 0.12);
         }
 
         button {
@@ -55,20 +102,54 @@
             font-weight: 600;
             cursor: pointer;
             transition: background 0.15s;
+            font-family: inherit;
         }
-        .btn-primary { background: #3b82f6; color: white; }
-        .btn-primary:hover:not(:disabled) { background: #2563eb; }
+        .btn-primary { background: #405b8d; color: #ffffff; }
+        .btn-primary:hover:not(:disabled) { background: #314873; }
         .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
-        .btn-secondary { background: #e2e8f0; color: #0f172a; }
-        .btn-secondary:hover { background: #cbd5e1; }
+        .btn-secondary { background: #e8eef8; color: #405b8d; }
+        .btn-secondary:hover { background: #dbe5f5; }
 
         .progress {
             text-align: center;
             padding: 30px 0;
         }
-        .progress .icon { font-size: 5rem; margin-bottom: 20px; line-height: 1; }
+        .progress .icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #e8eef8;
+            border: 1px solid #d8e2f1;
+            color: #405b8d;
+            box-shadow: 0 8px 24px rgba(38, 61, 99, 0.08);
+            overflow: hidden;
+        }
+        .progress .icon svg { width: 65%; height: 65%; display: block; }
         .progress .title { font-size: 1.5rem; font-weight: 600; margin-bottom: 10px; }
         .progress .msg { color: #64748b; font-size: 1rem; }
+
+        .employee-tag {
+            margin-top: 8px;
+            color: #405b8d;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .overwrite-warning {
+            display: inline-block;
+            margin-top: 14px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            background: #fff8e8;
+            border: 1px solid #fde68a;
+            color: #92400e;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
 
         .steps { display: flex; justify-content: center; gap: 12px; margin-top: 30px; }
         .step {
@@ -79,22 +160,37 @@
             font-weight: 600; color: #64748b;
             transition: all 0.3s;
         }
-        .step.done { background: #10b981; color: white; }
-        .step.active { background: #3b82f6; color: white; transform: scale(1.1); }
+        .step.done { background: #dcfce7; color: #15803d; }
+        .step.active { background: #405b8d; color: #ffffff; transform: scale(1.1); }
 
-        .status-icon-success { color: #10b981; }
-        .status-icon-error { color: #ef4444; }
+        .icon-success { color: #15803d !important; background: #dcfce7 !important; border-color: #bbf7d0 !important; }
+        .icon-error { color: #be123c !important; background: #ffe4e6 !important; border-color: #fecdd3 !important; }
+        .title-success { color: #166534 !important; }
+        .title-error { color: #9f1239 !important; }
 
         .button-row { display: flex; gap: 12px; margin-top: 24px; }
         .button-row button { flex: 1; }
 
-        .hidden { display: none; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
+    <div class="company">
+        <div>PHILIPPINE HOME PHARMACEUTICAL</div>
+        <div class="company-subtitle">Fingerprint Enrollment</div>
+    </div>
+
     <div class="card">
         <!-- IDLE: form -->
         <div id="view-idle">
+            <a class="back-link" onclick="backToKiosk()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5"/>
+                    <path d="M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Kiosk
+            </a>
+
             <h1>Enroll Fingerprint</h1>
             <p class="subtitle">Register a fingerprint for a new employee</p>
 
@@ -120,12 +216,16 @@
             </button>
         </div>
 
-        <!-- CAPTURING: showing scan progress -->
+        <!-- CAPTURING: scan progress -->
         <div id="view-capturing" class="hidden">
             <div class="progress">
-                <div class="icon">☝️</div>
+                <div class="icon" id="cap-icon"></div>
                 <div class="title" id="cap-title">Place your finger</div>
                 <div class="msg" id="cap-msg">Scan 1 of 3</div>
+                <div class="employee-tag" id="cap-employee"></div>
+                <div class="overwrite-warning hidden" id="cap-overwrite">
+                    ⚠ Overwriting existing enrollment for this finger
+                </div>
                 <div class="steps">
                     <div class="step" id="step-1">1</div>
                     <div class="step" id="step-2">2</div>
@@ -137,14 +237,24 @@
             </div>
         </div>
 
+        <!-- MERGING -->
+        <div id="view-merging" class="hidden">
+            <div class="progress">
+                <div class="icon" id="merge-icon"></div>
+                <div class="title">Processing...</div>
+                <div class="msg">Merging fingerprint templates and updating device</div>
+            </div>
+        </div>
+
         <!-- SUCCESS -->
         <div id="view-success" class="hidden">
             <div class="progress">
-                <div class="icon status-icon-success">✓</div>
-                <div class="title" id="succ-title">Enrolled</div>
+                <div class="icon icon-success" id="succ-icon"></div>
+                <div class="title title-success" id="succ-title">Enrolled</div>
                 <div class="msg" id="succ-msg"></div>
                 <div class="button-row">
                     <button class="btn-secondary" onclick="resetView()">Enroll Another</button>
+                    <button class="btn-primary" onclick="backToKiosk()">Back to Kiosk</button>
                 </div>
             </div>
         </div>
@@ -152,21 +262,13 @@
         <!-- ERROR -->
         <div id="view-error" class="hidden">
             <div class="progress">
-                <div class="icon status-icon-error">✗</div>
-                <div class="title">Enrollment Failed</div>
+                <div class="icon icon-error" id="err-icon"></div>
+                <div class="title title-error" id="err-title">Enrollment Failed</div>
                 <div class="msg" id="err-msg"></div>
                 <div class="button-row">
                     <button class="btn-secondary" onclick="resetView()">Try Again</button>
+                    <button class="btn-primary" onclick="backToKiosk()">Back to Kiosk</button>
                 </div>
-            </div>
-        </div>
-
-        <!-- MERGING -->
-        <div id="view-merging" class="hidden">
-            <div class="progress">
-                <div class="icon">⏳</div>
-                <div class="title">Processing...</div>
-                <div class="msg">Merging fingerprint templates</div>
             </div>
         </div>
     </div>
@@ -175,8 +277,53 @@
         let lastEventId = 0;
         let pollTimer = null;
 
+        // ── SVG icons ─────────────────────────────────────────────────
+        const ICONS = {
+            capture: `
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-label="Scan finger" role="img">
+                    <g fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round">
+                        <path d="M50 13 C30 13 17 28 17 47"/>
+                        <path d="M50 22 C35 22 26 33 26 48"/>
+                        <path d="M50 31 C40 31 35 39 35 49"/>
+                        <path d="M50 40 C46 40 44 44 44 50"/>
+                        <path d="M50 13 C70 13 83 28 83 47"/>
+                        <path d="M50 22 C65 22 74 33 74 48"/>
+                        <path d="M50 31 C60 31 65 39 65 49"/>
+                        <path d="M50 40 C54 40 56 44 56 50"/>
+                        <path d="M17 54 C18 73 28 85 40 91"/>
+                        <path d="M26 56 C27 70 33 79 42 84"/>
+                        <path d="M35 57 C36 66 40 73 46 77"/>
+                        <path d="M83 54 C82 73 72 85 60 91"/>
+                        <path d="M74 56 C73 70 67 79 58 84"/>
+                        <path d="M65 57 C64 66 60 73 54 77"/>
+                        <path d="M50 49 C49 62 50 72 50 80"/>
+                    </g>
+                </svg>`,
+            merging: `
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-label="Processing" role="img">
+                    <g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="50" cy="50" r="30" stroke-dasharray="120 60"/>
+                        <path d="M50 32 L50 52 L62 58"/>
+                    </g>
+                </svg>`,
+            success: `
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-label="Success" role="img">
+                    <g fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M26 52 L44 70 L76 32"/>
+                    </g>
+                </svg>`,
+            error: `
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-label="Error" role="img">
+                    <g fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M32 32 L68 68"/>
+                        <path d="M68 32 L32 68"/>
+                    </g>
+                </svg>`,
+        };
+
+        // ── View switcher ─────────────────────────────────────────────
         function showView(id) {
-            ['view-idle','view-capturing','view-success','view-error','view-merging']
+            ['view-idle','view-capturing','view-merging','view-success','view-error']
                 .forEach(v => document.getElementById(v).classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
         }
@@ -190,47 +337,100 @@
             }
         }
 
+        // ── Start enrollment ──────────────────────────────────────────
         async function startEnrollment() {
             const company_id = document.getElementById('company_id').value.trim();
             const finger_id = document.getElementById('finger_id').value;
+            const btn = document.getElementById('btn-start');
 
-            if (!company_id) { alert('Enter an Employee ID'); return; }
+            if (!company_id) {
+                showError('Please enter an Employee ID');
+                return;
+            }
 
-            document.getElementById('btn-start').disabled = true;
+            btn.disabled = true;
+            btn.innerText = 'Verifying employee...';
+
             try {
                 const res = await fetch('/api/enroll/start', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({company_id, finger_id}),
+                    body: JSON.stringify({ company_id, finger_id }),
                 });
                 const data = await res.json();
+
                 if (!res.ok) {
-                    alert(data.error || 'Could not start enrollment');
-                    document.getElementById('btn-start').disabled = false;
+                    showError(data.error || 'Could not start enrollment');
+                    btn.disabled = false;
+                    btn.innerText = 'Start Enrollment';
                     return;
                 }
+
+                document.getElementById('cap-icon').innerHTML = ICONS.capture;
+                document.getElementById('cap-employee').innerText =
+                    data.employee_name ? `Enrolling: ${data.employee_name}` : '';
+                document.getElementById('cap-msg').innerText = 'Scan 1 of 3';
+
+                const overwriteEl = document.getElementById('cap-overwrite');
+                if (data.overwrite) {
+                    overwriteEl.classList.remove('hidden');
+                } else {
+                    overwriteEl.classList.add('hidden');
+                }
+
                 showView('view-capturing');
                 updateSteps(0);
                 startPolling();
+
+                btn.disabled = false;
+                btn.innerText = 'Start Enrollment';
+
             } catch (e) {
-                alert('Server unreachable');
-                document.getElementById('btn-start').disabled = false;
+                showError('Server unreachable. Please try again.');
+                btn.disabled = false;
+                btn.innerText = 'Start Enrollment';
             }
         }
 
+        // ── Cancel enrollment ─────────────────────────────────────────
         async function cancelEnrollment() {
             stopPolling();
-            await fetch('/api/enroll/reset', {method: 'POST'});
+            try {
+                await fetch('/api/enroll/reset', { method: 'POST' });
+            } catch (e) {}
             resetView();
         }
 
+        // ── Reset back to form ────────────────────────────────────────
         function resetView() {
             stopPolling();
             document.getElementById('company_id').value = '';
+            document.getElementById('finger_id').value = '1';
             document.getElementById('btn-start').disabled = false;
+            document.getElementById('btn-start').innerText = 'Start Enrollment';
             showView('view-idle');
         }
 
+        // ── Show error view ───────────────────────────────────────────
+        function showError(message) {
+            document.getElementById('err-icon').innerHTML = ICONS.error;
+            document.getElementById('err-msg').innerText = message;
+            showView('view-error');
+        }
+
+        // ── Back to kiosk (clears PIN session) ────────────────────────
+        async function backToKiosk() {
+            stopPolling();
+            try {
+                await fetch('/api/enroll/reset', { method: 'POST' });
+            } catch (e) {}
+            try {
+                await fetch('/api/enroll/logout', { method: 'POST' });
+            } catch (e) {}
+            window.location.href = '/';
+        }
+
+        // ── Polling ───────────────────────────────────────────────────
         function startPolling() {
             stopPolling();
             pollTimer = setInterval(pollStatus, 500);
@@ -243,6 +443,11 @@
         async function pollStatus() {
             try {
                 const res = await fetch('/api/enroll/status');
+                if (res.status === 403) {
+                    // Session lost — send back to kiosk
+                    window.location.href = '/';
+                    return;
+                }
                 const data = await res.json();
                 if (data.event_id === lastEventId) return;
                 lastEventId = data.event_id;
@@ -250,24 +455,37 @@
             } catch (e) {}
         }
 
+        // ── Render polled status ──────────────────────────────────────
         function renderStatus(data) {
             if (data.status === 'capturing') {
                 showView('view-capturing');
                 updateSteps(data.scan_count || 0);
-                document.getElementById('cap-msg').innerText = data.message || `Scan ${(data.scan_count||0)+1} of 3`;
+                document.getElementById('cap-msg').innerText =
+                    data.message || `Scan ${(data.scan_count || 0) + 1} of 3`;
+
             } else if (data.status === 'merging') {
+                document.getElementById('merge-icon').innerHTML = ICONS.merging;
                 showView('view-merging');
+
             } else if (data.status === 'success') {
                 stopPolling();
-                document.getElementById('succ-title').innerText = data.employee_name || 'Enrolled';
+                document.getElementById('succ-icon').innerHTML = ICONS.success;
+                document.getElementById('succ-title').innerText =
+                    data.employee_name || 'Enrolled Successfully';
                 document.getElementById('succ-msg').innerText = data.message || '';
                 showView('view-success');
+
             } else if (data.status === 'error') {
                 stopPolling();
-                document.getElementById('err-msg').innerText = data.message || 'Unknown error';
-                showView('view-error');
+                showError(data.message || 'Unknown error');
             }
         }
+
+        // ── Init: preload SVG icons ───────────────────────────────────
+        document.getElementById('cap-icon').innerHTML = ICONS.capture;
+        document.getElementById('merge-icon').innerHTML = ICONS.merging;
+        document.getElementById('err-icon').innerHTML = ICONS.error;
+        document.getElementById('succ-icon').innerHTML = ICONS.success;
     </script>
 </body>
 </html>

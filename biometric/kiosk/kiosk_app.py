@@ -1,11 +1,29 @@
 import os
+import sys
 import time
 import threading
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, session, redirect
 from dotenv import load_dotenv
+
+# ── Force UTF-8 stdout/stderr ──────────────────────────────────────
+# Windows default cp1252 codepage can't encode ✓ ✗ ⚠ → and crashes the
+# scanner thread with UnicodeEncodeError. This fixes it and enables line
+# buffering so logs appear immediately in kiosk.log.
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace', line_buffering=True)
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace', line_buffering=True)
 
 load_dotenv()
 app = Flask(__name__)
+
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-only-change-in-env')
+ENROLL_PIN = os.environ.get('ENROLL_PIN', '1234')
+
+
+def _enroll_authorized():
+    return session.get('enroll_authorized', False)
 
 API_BASE = os.environ.get('HRIS_API_BASE', 'https://hris-project1.onrender.com')
 REFRESH_TOKEN = os.environ.get('HRIS_REFRESH_TOKEN')
@@ -46,7 +64,7 @@ def get_access_token(force=False):
         r = requests.post(
             f"{API_BASE}/api/auth/refresh/",
             json={'refresh': REFRESH_TOKEN},
-            timeout=10,
+            timeout=60,
         )
         r.raise_for_status()
         _access_token = r.json()['access']
@@ -60,11 +78,11 @@ def api(method, url, **kwargs):
     token = get_access_token()
     headers = kwargs.pop('headers', {})
     headers['Authorization'] = f'Bearer {token}'
-    r = requests.request(method, url, headers=headers, timeout=30, **kwargs)
+    r = requests.request(method, url, headers=headers, timeout=60, **kwargs)
     if r.status_code == 401:
         token = get_access_token(force=True)
         headers['Authorization'] = f'Bearer {token}'
-        r = requests.request(method, url, headers=headers, timeout=30, **kwargs)
+        r = requests.request(method, url, headers=headers, timeout=60, **kwargs)
     return r
 
 
@@ -191,9 +209,23 @@ def scanner_loop():
         return
     zkfp2.OpenDevice(0)
 
+    # ── Retry fingerprint loading (Render may be cold-starting) ──────
     print("=== Startup: loading fingerprints ===")
-    load_all_fingerprints_into_device(zkfp2)
-    print("=== Ready. Waiting for scans... ===\n")
+    loaded_ok = False
+    for attempt in range(1, 4):
+        print(f"  Attempt {attempt}/3...")
+        loaded_ok = load_all_fingerprints_into_device(zkfp2)
+        if loaded_ok:
+            break
+        if attempt < 3:
+            print(f"  Retrying in 5 seconds (Render may be waking up)...")
+            time.sleep(5)
+
+    if not loaded_ok:
+        print("=== WARNING: Could not load fingerprints from server. ===")
+        print("=== Device is running but no scans will match until restart. ===")
+    else:
+        print("=== Ready. Waiting for scans... ===\n")
 
     last_scan = {}
     SCAN_COOLDOWN = 10
@@ -221,7 +253,6 @@ def scanner_loop():
         else:
             handle_scan_capture(zkfp2, tmp, last_scan, SCAN_COOLDOWN)
 
-
 def handle_scan_capture(zkfp2, tmp, last_scan, cooldown):
     finger_id, score = zkfp2.DBIdentify(bytes(tmp))
     if finger_id == -1 or score < 50:
@@ -238,36 +269,52 @@ def handle_scan_capture(zkfp2, tmp, last_scan, cooldown):
     if not company_id:
         print(f"  ⚠ Finger {finger_id} matched (score={score}) but NOT in finger_map!")
         print(f"  ⚠ Available keys: {available}")
-        print(f"  ⚠ Consider restarting kiosk to reload templates.")
         return
 
     last_scan[finger_id] = now
     print(f"[{time.strftime('%H:%M:%S')}] MATCH: {company_id} (finger_id={finger_id}, score={score})")
 
-    try:
-        r = api('POST', f"{API_BASE}/api/attendance/biometric/",
-                json={'company_id': company_id, 'device_id': 'ZK9500-KIOSK'})
-        data = r.json()
+    # ── POST attendance with retry on network errors ──────────────
+    last_error = None
+    for attempt in range(1, 3):  # 2 attempts
+        try:
+            r = api('POST', f"{API_BASE}/api/attendance/biometric/",
+                    json={'company_id': company_id, 'device_id': 'ZK9500-KIOSK'})
+            data = r.json()
 
-        if r.status_code in (200, 201):
-            action = data.get('action')
-            if action == 'clock_in':
-                t = data.get('clock_in', '')[:19].split('T')[-1]
-                update_scan_state('success', data.get('employee'), f'Clocked in at {t}')
-            elif action == 'clock_out':
-                t = data.get('clock_out', '')[:19].split('T')[-1]
-                update_scan_state('success', data.get('employee'), f'Clocked out at {t}')
-            elif action == 'too_soon_for_clock_out':
-                update_scan_state('warning', data.get('employee'), data.get('message'))
-            elif action == 'already_complete':
-                update_scan_state('warning', data.get('employee'), 'Already clocked out')
+            if r.status_code in (200, 201):
+                action = data.get('action')
+                if action == 'clock_in':
+                    t = data.get('clock_in', '')[:19].split('T')[-1]
+                    update_scan_state('success', data.get('employee'), f'Clocked in at {t}')
+                elif action == 'clock_out':
+                    t = data.get('clock_out', '')[:19].split('T')[-1]
+                    update_scan_state('success', data.get('employee'), f'Clocked out at {t}')
+                elif action == 'too_soon_for_clock_out':
+                    update_scan_state('warning', data.get('employee'), data.get('message'))
+                elif action == 'already_complete':
+                    update_scan_state('warning', data.get('employee'), 'Already clocked out')
+                else:
+                    update_scan_state('success', data.get('employee'), 'Recorded')
+                return  # success — done
+
             else:
-                update_scan_state('success', data.get('employee'), 'Recorded')
-        else:
-            update_scan_state('error', None, data.get('error', 'Not recognized'))
-    except Exception as e:
-        print(f"POST error: {e}")
-        update_scan_state('error', None, 'Server unreachable')
+                # Backend returned 4xx/5xx — no point retrying
+                err_msg = data.get('error', 'Not recognized')
+                update_scan_state('error', None, err_msg)
+                print(f"  ✗ Attendance rejected: {err_msg}")
+                return
+
+        except Exception as e:
+            last_error = str(e)
+            print(f"  Attempt {attempt}/2 failed: {e}")
+            if attempt < 2:
+                print(f"  Retrying in 3s (Render may be cold)...")
+                time.sleep(3)
+
+    # Both attempts failed
+    print(f"  ✗ POST error after 2 attempts: {last_error}")
+    update_scan_state('error', None, 'Server unreachable — please try again')
 
 
 def handle_enroll_capture(zkfp2, tmp, company_id, finger_id):
@@ -368,16 +415,22 @@ def last_scan_route():
 
 @app.route('/enroll')
 def enroll_page():
+    if not _enroll_authorized():
+        return redirect('/')
     return render_template('enroll.html')
 
 
 @app.route('/api/enroll/status')
 def enroll_status():
+    if not _enroll_authorized():
+        return jsonify({'error': 'Enroll authorization required'}), 403
     return jsonify(get_enroll_snapshot())
 
 
 @app.route('/api/enroll/start', methods=['POST'])
 def enroll_start():
+    if not _enroll_authorized():
+        return jsonify({'error': 'Enroll authorization required'}), 403
     data = request.get_json() or {}
     company_id = (data.get('company_id') or '').strip()
     finger_id = data.get('finger_id')
@@ -442,6 +495,8 @@ def enroll_start():
 
 @app.route('/api/enroll/reset', methods=['POST'])
 def enroll_reset():
+    if not _enroll_authorized():
+        return jsonify({'error': 'Enroll authorization required'}), 403
     with enroll_lock:
         enroll_state.update({
             'active': False,
@@ -454,6 +509,21 @@ def enroll_reset():
             'templates': [],
             'event_id': enroll_state['event_id'] + 1,
         })
+    return jsonify({'ok': True})
+
+@app.route('/api/enroll/verify-pin', methods=['POST'])
+def enroll_verify_pin():
+    data = request.get_json() or {}
+    pin = str(data.get('pin', '')).strip()
+    if pin and pin == ENROLL_PIN:
+        session['enroll_authorized'] = True
+        return jsonify({'ok': True})
+    return jsonify({'error': 'Invalid PIN'}), 401
+
+
+@app.route('/api/enroll/logout', methods=['POST'])
+def enroll_logout():
+    session.pop('enroll_authorized', None)
     return jsonify({'ok': True})
 
 
